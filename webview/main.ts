@@ -6,11 +6,14 @@
  * `github-markdown-theme` instead of the VS Code default theme.
  *
  * Protocol (extension host <-> webview):
- *   host -> webview: { type: 'content', content, documentVersion }
+ *   host -> webview: { type: 'content', content }
  *   webview -> host:
  *     { type: 'edit', start, endExclusive, text }
  *     { type: 'undo' } / { type: 'redo' }
  *     { type: 'openLink', href }
+ *     { type: 'setReadonly', readonly }
+ *     { type: 'setTheme', theme: 'auto' | 'light' | 'dark' }
+ *     { type: 'openSource' }
  */
 
 import {
@@ -20,14 +23,20 @@ import {
     Selection,
     StringValue,
 } from '@vscode/markdown-editor';
-import { autorun } from '@vscode/markdown-editor/observables';
+import { autorun } from '@vscode/observables';
 import 'katex/dist/katex.min.css';
 import '@vscode/markdown-editor/editor.css';
 import '@vscode/markdown-editor/themes/github.css';
 /* Pins the package theme to the markdown styles github.com ships today. */
 import './github-light.css';
+/* Primer dark values, active under `<html data-gh-theme="dark">` (see theme.ts). */
+import './github-dark.css';
 import './canvas.css';
 import { computeTextEdit } from './computeTextEdit';
+import { HtmlBlockRenderer } from './htmlBlocks';
+import { classifyLink, findHeadingBySlug } from './links';
+import { isThemePreference, ThemeController, type ThemePreference } from './theme';
+import { createSourceButton, createThemeToggle } from './themeToggle';
 
 interface VsCodeApi {
     postMessage(message: unknown): void;
@@ -40,10 +49,13 @@ declare function acquireVsCodeApi(): VsCodeApi;
 interface InitialState {
     readonly content: string;
     readonly documentVersion: number;
+    readonly readonly: boolean;
+    readonly theme: ThemePreference;
 }
 
 interface PersistedViewState {
     scrollTop?: number;
+    selection?: { anchor: number; active: number };
 }
 
 function readInitialState(): InitialState {
@@ -57,32 +69,70 @@ function readInitialState(): InitialState {
     if (typeof candidate?.content !== 'string') {
         throw new Error('Markdown editor initial state is invalid.');
     }
-    return { content: candidate.content, documentVersion: candidate.documentVersion ?? 0 };
+    return {
+        content: candidate.content,
+        documentVersion: candidate.documentVersion ?? 0,
+        readonly: candidate.readonly === true,
+        theme: isThemePreference(candidate.theme) ? candidate.theme : 'auto',
+    };
 }
 
 class GithubStyleEditor {
     readonly model = new EditorModel();
+    readonly #vscode = acquireVsCodeApi();
     #isUpdatingFromHost = false;
     #previousText: string;
 
     constructor(host: HTMLElement, initial: InitialState) {
-        const vscode = acquireVsCodeApi();
-
         this.#previousText = initial.content;
         this.model.sourceText.set(new StringValue(initial.content), undefined);
+        this.model.readonlyMode.set(initial.readonly, undefined);
 
         const view = new EditorView(this.model, {
             classNames: ['github-markdown-theme'],
-            onOpenLink: (url: string) => {
-                vscode.postMessage({ type: 'openLink', href: url });
+            presentation: initial.readonly ? 'reading' : 'editing',
+            onOpenLink: (url: string) => this.#openLink(host, url),
+            onToggleCheckbox: (item, checked) => {
+                this.model.setTaskCheckboxChecked(item, checked);
             },
         });
-        new EditorController(this.model, view);
+        // Undo/redo chords go to the provider's per-document history (see
+        // src/documentHistory.ts); the DOM editor keeps no local stack. The
+        // default keyboard profile handles every editor chord locally — the
+        // engine's VS Code profiles would forward undo to the workbench's
+        // native TextDocument stack instead.
+        new EditorController(this.model, view, {
+            historyStrategy: {
+                undo: () => this.#vscode.postMessage({ type: 'undo' }),
+                redo: () => this.#vscode.postMessage({ type: 'redo' }),
+            },
+        });
 
         host.appendChild(view.element);
 
-        // Place the caret at the end so typing works immediately after opening.
-        this.#setCaretToEnd(initial.content);
+        // GitHub renders raw HTML blocks (centered logos, <picture>, <details>…);
+        // the engine leaves them as unhandled source.
+        const themeController = new ThemeController(initial.theme, next => htmlBlocks.setTheme(next));
+        const htmlBlocks = new HtmlBlockRenderer(view.element, this.model, view, {
+            onOpenLink: url => this.#openLink(host, url),
+            theme: themeController.theme,
+        });
+        createSourceButton(view.element, () => this.#vscode.postMessage({ type: 'openSource' }));
+        createThemeToggle(view.element, initial.theme, () => {
+            const preference = themeController.nextPreference();
+            themeController.setPreference(preference);
+            this.#vscode.postMessage({ type: 'setTheme', theme: preference });
+            return preference;
+        });
+
+        const saved = this.#getViewState();
+        if (saved.selection) {
+            const max = initial.content.length;
+            this.model.selection.set(
+                new Selection(Math.min(saved.selection.anchor, max), Math.min(saved.selection.active, max)),
+                undefined,
+            );
+        }
 
         // --- host -> webview -------------------------------------------------
         window.addEventListener('message', (event: MessageEvent) => {
@@ -92,8 +142,8 @@ class GithubStyleEditor {
             }
             this.#isUpdatingFromHost = true;
             try {
-                this.model.sourceText.set(new StringValue(message.content), undefined);
-                this.#setCaretToEnd(message.content);
+                // Maps the selection through the change instead of resetting it.
+                this.model.replaceSourceText(new StringValue(message.content));
             } finally {
                 this.#isUpdatingFromHost = false;
             }
@@ -108,49 +158,81 @@ class GithubStyleEditor {
             }
             const edit = computeTextEdit(this.#previousText, text);
             if (edit) {
-                vscode.postMessage({ type: 'edit', ...edit });
+                this.#vscode.postMessage({ type: 'edit', ...edit });
             }
             this.#previousText = text;
         });
 
-        // Keyboard chords for undo/redo (the DOM editor does not own the file's
-        // undo stack; the provider keeps a snapshot history instead).
-        window.addEventListener('keydown', event => {
-            const hasMeta = event.ctrlKey || event.metaKey;
-            if (!hasMeta || event.key !== 'z') {
-                return;
+        // The edit/read-only toggle flips `readonlyMode`; mirror it into the
+        // presentation and remember it as the default for the next editor. The
+        // initial value is skipped so opening an editor never re-writes it.
+        let firstReadonly = true;
+        autorun(reader => {
+            const readonly = reader.readObservable(this.model.readonlyMode);
+            this.model.presentation.set(readonly ? 'reading' : 'editing', undefined);
+            if (!firstReadonly) {
+                this.#vscode.postMessage({ type: 'setReadonly', readonly });
             }
-            event.preventDefault();
-            vscode.postMessage({ type: event.shiftKey ? 'redo' : 'undo' });
+            firstReadonly = false;
+        });
+
+        autorun(reader => {
+            const selection = reader.readObservable(this.model.selection);
+            this.#patchViewState({ selection: selection ? { anchor: selection.anchor, active: selection.active } : undefined });
         });
 
         // Persist scroll position across webview reloads.
-        const saved = (vscode.getState() as PersistedViewState | undefined) ?? {};
-        if (typeof saved.scrollTop === 'number' && saved.scrollTop > 0) {
-            requestAnimationFrame(() => {
-                host.scrollTop = saved.scrollTop!;
-            });
-        }
+        this.#restoreScroll(host, saved.scrollTop);
         let scrollSaveScheduled = false;
-        const saveScroll = (): void => {
+        host.addEventListener('scroll', () => {
             if (scrollSaveScheduled) {
                 return;
             }
             scrollSaveScheduled = true;
             requestAnimationFrame(() => {
                 scrollSaveScheduled = false;
-                vscode.setState({ scrollTop: host.scrollTop } satisfies PersistedViewState);
+                this.#patchViewState({ scrollTop: host.scrollTop });
             });
-        };
-        host.addEventListener('scroll', saveScroll, { passive: true });
+        }, { passive: true });
         window.addEventListener('pagehide', () => {
             // Flush synchronously; a frame-throttled save may not have run yet.
-            vscode.setState({ scrollTop: host.scrollTop } satisfies PersistedViewState);
+            this.#patchViewState({ scrollTop: host.scrollTop });
         });
     }
 
-    #setCaretToEnd(content: string): void {
-        this.model.selection.set(new Selection(content.length, content.length), undefined);
+    #openLink(host: HTMLElement, url: string): void {
+        const link = classifyLink(url);
+        if (link.kind === 'fragment') {
+            findHeadingBySlug(host, link.slug)?.scrollIntoView({ block: 'start' });
+            return;
+        }
+        if (link.kind !== 'blocked') {
+            this.#vscode.postMessage({ type: 'openLink', href: url });
+        }
+    }
+
+    #getViewState(): PersistedViewState {
+        return (this.#vscode.getState() as PersistedViewState | undefined) ?? {};
+    }
+
+    #patchViewState(patch: PersistedViewState): void {
+        this.#vscode.setState({ ...this.#getViewState(), ...patch });
+    }
+
+    #restoreScroll(host: HTMLElement, scrollTop: number | undefined): void {
+        if (typeof scrollTop !== 'number' || scrollTop <= 0) {
+            return;
+        }
+        // Content height settles over a few frames (async parse, images), so
+        // re-apply until it sticks.
+        let tries = 0;
+        const apply = (): void => {
+            host.scrollTop = scrollTop;
+            if (++tries < 6 && Math.abs(host.scrollTop - scrollTop) > 1) {
+                requestAnimationFrame(apply);
+            }
+        };
+        requestAnimationFrame(apply);
     }
 }
 

@@ -40,6 +40,14 @@
     text-underline-offset: 0.2rem;
 }
 
+/* GitHub keeps the accent color while a link is hovered (only the underline
+   appears). VS Code's injected default stylesheet repaints `a:hover` with the
+   workbench theme's `--vscode-textLink-activeForeground`, which the `:root`
+   pins in `canvas.css` cannot out-rank (see "code ink" below). */
+.github-markdown-theme a:hover {
+    color: #0969da;
+}
+
 /* ------------------------------------------------------- thematic break */
 
 /* GitHub changed `<hr>` from the old 0.25 em bar to a 1px hairline:
@@ -54,6 +62,45 @@
    the bundled theme used 10px top/bottom. */
 .github-markdown-theme .md-code-block {
     padding: 16px;
+}
+
+/* -------------------------------------------------------------- code ink */
+
+/*
+ * VS Code's webview host prepends its own default stylesheet to every webview
+ * document (`@layer vscode-default` in the webview bootstrap):
+ *
+ *     code      { color: var(--vscode-textPreformat-foreground); }
+ *     a, a code { color: var(--vscode-textLink-foreground); }
+ *     a:hover   { color: var(--vscode-textLink-activeForeground); }
+ *
+ * The theme's colors are written as *inline* custom properties on `<html>`
+ * (`document.documentElement.style`), so the `:root` pins in `canvas.css` can
+ * never out-rank them and the ink follows the workbench theme instead of
+ * Primer: under a dark theme — e.g. Nord, `textPreformat.foreground: #8fbcbb`
+ * — inline/fenced code renders in a pale teal on the light `#f0f1f2` chip,
+ * and link-wrapped code takes the theme's own link color instead of GitHub
+ * blue. Unlayered rules always beat layered ones, so re-assert GitHub's ink
+ * here. `inherit` mirrors GitHub's own CSS, which sets no `color` on `code`:
+ * plain code takes the surrounding body ink (#1f2328), code inside a link
+ * keeps the link accent (#0969da).
+ */
+.github-markdown-theme code {
+    color: inherit;
+}
+
+/* ----------------------------------------------------------- blockquote */
+
+/*
+ * GitHub's blockquote is just the left rule plus muted text on the page
+ * background (no fill). VS Code's injected default stylesheet paints
+ * `blockquote { background: var(--vscode-textBlockQuote-background) }`, which
+ * under a dark theme is an opaque dark fill (Nord: #3b4252) behind the light
+ * document. The theme's `border-left` color already wins (unlayered, see the
+ * code-ink note above); the background needs the same treatment.
+ */
+.github-markdown-theme .md-blockquote {
+    background-color: transparent;
 }
 
 /* ------------------------------------------------------------ tables */
@@ -146,6 +193,11 @@
     opacity: 1;
 }
 
+/* The active heading shows its source `#` marker in that gutter instead. */
+.github-markdown-theme .md-heading.md-block-active::before {
+    display: none;
+}
+
 /* -------------------------------------------------- editor canvas chrome */
 
 /*
@@ -207,4 +259,259 @@
 .github-markdown-theme .md-block-active {
     background-color: #f6f8fa;
     box-shadow: 0 0 0 8px #f6f8fa;
+}
+
+/* An empty block has no margin of its own, so its active wash (8px spread)
+   would paint over the neighbouring text. The caret alone marks it. */
+.github-markdown-theme .md-empty-block.md-block-active {
+    background-color: transparent;
+    box-shadow: none;
+}
+
+/* ------------------------------------------------------ soft line breaks */
+
+/*
+ * The engine's editing presentation keeps source whitespace, so every soft
+ * line break in a paragraph renders as a visual line break. GitHub joins the
+ * lines of a paragraph with a space; do the same while the paragraph is
+ * inactive (markers hidden). The active paragraph keeps the source lines so
+ * the caret maps 1:1 onto what is being edited.
+ */
+.github-markdown-theme.md-source-editing .md-paragraph.md-markers-hidden > .md-glue-hidden,
+.github-markdown-theme.md-source-editing .md-markers-hidden :is(li, td, blockquote) .md-paragraph > .md-glue-hidden {
+    white-space: normal;
+}
+
+/* ------------------------------------------------------ raw HTML blocks */
+
+/*
+ * Raw HTML blocks rendered GitHub-style (see `webview/htmlBlocks.ts`). While
+ * rendered, the engine's dashed "unhandled" source box is hidden and the
+ * sanitized rendering stands in for it; when the block becomes active the
+ * source comes back for editing.
+ */
+.github-markdown-theme .md-unhandled-block.gh-html-block {
+    border-color: transparent;
+    margin: 0 0 16px;
+}
+
+.github-markdown-theme .md-unhandled-block.gh-html-block > pre {
+    display: none;
+}
+
+.github-markdown-theme .md-unhandled-block:not(.gh-html-block) > .gh-html-render {
+    display: none;
+}
+
+.github-markdown-theme .gh-html-render {
+    cursor: text;
+    white-space: normal;
+    font-family: inherit;
+}
+
+.github-markdown-theme:not(.md-source-editing) .gh-html-render {
+    cursor: auto;
+}
+
+.github-markdown-theme .gh-html-render :is(a[href], summary) {
+    cursor: pointer;
+}
+
+.github-markdown-theme .gh-html-render > :first-child {
+    margin-top: 0;
+}
+
+.github-markdown-theme .gh-html-render > :last-child {
+    margin-bottom: 0;
+}
+
+/* `.markdown-body` element styles for tags only raw HTML can produce. */
+.github-markdown-theme .gh-html-render :is(p, blockquote, ul, ol, dl, table, pre, details) {
+    margin-top: 0;
+    margin-bottom: 16px;
+}
+
+.github-markdown-theme .gh-html-render :is(h1, h2, h3, h4, h5, h6) {
+    margin-top: 24px;
+    margin-bottom: 16px;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.github-markdown-theme .gh-html-render h1 {
+    font-size: 2em;
+    padding-bottom: 0.3em;
+    border-bottom: 1px solid #d1d9e0b3;
+}
+
+.github-markdown-theme .gh-html-render h2 {
+    font-size: 1.5em;
+    padding-bottom: 0.3em;
+    border-bottom: 1px solid #d1d9e0b3;
+}
+
+.github-markdown-theme .gh-html-render h3 { font-size: 1.25em; }
+.github-markdown-theme .gh-html-render h4 { font-size: 1em; }
+.github-markdown-theme .gh-html-render h5 { font-size: 0.875em; }
+.github-markdown-theme .gh-html-render h6 { font-size: 0.85em; color: #59636e; }
+
+.github-markdown-theme .gh-html-render a {
+    color: #0969da;
+    text-decoration: underline;
+    text-underline-offset: 0.2rem;
+}
+
+.github-markdown-theme .gh-html-render summary {
+    display: list-item;
+}
+
+.github-markdown-theme .gh-html-render hr {
+    height: 1px;
+    padding: 0;
+    margin: 24px 0;
+    border: 0;
+    background-color: #d1d9e0;
+}
+
+.github-markdown-theme .gh-html-render code {
+    padding: 0.2em 0.4em;
+    font-size: 85%;
+    border-radius: 6px;
+    background-color: #818b981f;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+.github-markdown-theme .gh-html-render table {
+    border-collapse: collapse;
+}
+
+.github-markdown-theme .gh-html-render :is(td, th) {
+    padding: 6px 13px;
+    border: 1px solid #d1d9e0;
+}
+
+.github-markdown-theme .gh-html-render th {
+    font-weight: 600;
+}
+
+.github-markdown-theme kbd {
+    display: inline-block;
+    padding: 0 5px;
+    font: 11px ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    line-height: 20px;
+    color: #1f2328;
+    vertical-align: middle;
+    background-color: #f6f8fa;
+    border: solid 1px #d1d9e0b3;
+    border-bottom-color: #d1d9e0b3;
+    border-radius: 6px;
+    box-shadow: inset 0 -1px 0 #d1d9e0b3;
+}
+
+/* GitHub hides `#gh-dark-mode-only` images in its light theme. */
+.github-markdown-theme img[src$="#gh-dark-mode-only"] {
+    display: none;
+}
+
+/* Engine elements stood in for by a rendering (see `webview/htmlBlocks.ts`). */
+.github-markdown-theme .gh-inline-html,
+.github-markdown-theme .md-unhandled-block.gh-html-empty,
+.github-markdown-theme .gh-details-collapsed {
+    display: none;
+}
+
+/* ---------------------------------------------------------------- alerts */
+
+/*
+ * GitHub alerts (`> [!NOTE]` …, see `webview/alerts.ts`): the blockquote keeps
+ * its left rule in the alert color, and the first paragraph's `[!KIND]` line
+ * becomes an octicon + title row in that color (`.markdown-alert`).
+ */
+.github-markdown-theme .md-blockquote.gh-alert {
+    color: inherit;
+    border-left-width: 0.25em;
+}
+
+.github-markdown-theme .gh-alert-title {
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+    line-height: 1;
+    margin-bottom: 8px;
+}
+
+.github-markdown-theme .gh-alert-title::before {
+    content: "";
+    flex: none;
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+    background-color: currentColor;
+    mask: var(--gh-alert-icon) center / contain no-repeat;
+    -webkit-mask: var(--gh-alert-icon) center / contain no-repeat;
+}
+
+.github-markdown-theme .md-blockquote.gh-alert-note {
+    border-left-color: #0969da;
+}
+
+.github-markdown-theme .gh-alert-title-note {
+    color: #0969da;
+    --gh-alert-icon: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z'/></svg>");
+}
+
+.github-markdown-theme .md-blockquote.gh-alert-tip {
+    border-left-color: #1a7f37;
+}
+
+.github-markdown-theme .gh-alert-title-tip {
+    color: #1a7f37;
+    --gh-alert-icon: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M8 1.5c-2.363 0-4 1.69-4 3.75 0 .984.424 1.625.984 2.304l.214.253c.223.264.47.556.673.848.284.411.537.896.621 1.49a.75.75 0 0 1-1.484.211c-.04-.282-.163-.547-.37-.847a8.456 8.456 0 0 0-.542-.68c-.084-.1-.173-.205-.268-.32C3.201 7.75 2.5 6.766 2.5 5.25 2.5 2.31 4.863 0 8 0s5.5 2.31 5.5 5.25c0 1.516-.701 2.5-1.328 3.259-.095.115-.184.22-.268.319-.207.245-.383.453-.541.681-.208.3-.33.565-.37.847a.751.751 0 0 1-1.485-.212c.084-.593.337-1.078.621-1.489.203-.292.45-.584.673-.848.075-.088.147-.173.213-.253.561-.679.985-1.32.985-2.304 0-2.06-1.637-3.75-4-3.75ZM5.75 12h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1 0-1.5ZM6 15.25a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75Z'/></svg>");
+}
+
+.github-markdown-theme .md-blockquote.gh-alert-important {
+    border-left-color: #8250df;
+}
+
+.github-markdown-theme .gh-alert-title-important {
+    color: #8250df;
+    --gh-alert-icon: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v9.5A1.75 1.75 0 0 1 14.25 13H8.06l-2.573 2.573A1.458 1.458 0 0 1 3 14.543V13H1.75A1.75 1.75 0 0 1 0 11.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-9.5a.25.25 0 0 0-.25-.25Zm7 2.25v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z'/></svg>");
+}
+
+.github-markdown-theme .md-blockquote.gh-alert-warning {
+    border-left-color: #9a6700;
+}
+
+.github-markdown-theme .gh-alert-title-warning {
+    color: #9a6700;
+    --gh-alert-icon: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z'/></svg>");
+}
+
+.github-markdown-theme .md-blockquote.gh-alert-caution {
+    border-left-color: #d1242f;
+}
+
+.github-markdown-theme .gh-alert-title-caution {
+    color: #d1242f;
+    --gh-alert-icon: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M4.47.22A.749.749 0 0 1 5 0h6c.199 0 .389.079.53.22l4.25 4.25c.141.14.22.331.22.53v6a.749.749 0 0 1-.22.53l-4.25 4.25A.749.749 0 0 1 11 16H5a.749.749 0 0 1-.53-.22L.22 11.53A.749.749 0 0 1 0 11V5c0-.199.079-.389.22-.53Zm.84 1.28L1.5 5.31v5.38l3.81 3.81h5.38l3.81-3.81V5.31L10.69 1.5ZM8 4a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4Zm0 8a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z'/></svg>");
+}
+
+
+/* -------------------------------------------- fenced code: fence lines */
+
+/*
+ * An inactive code block keeps its fence lines (hidden ```` ```ts ```` /
+ * ```` ``` ```` markers) as blank lines above and below the code, plus the
+ * source newline after the opening fence inside `<code>`. GitHub's `pre` is
+ * just 16px padding around the code: drop the fence lines while they are
+ * hidden and pull the code over its leading newline. (The trailing newline
+ * before the closing fence ends the last line and adds no line box.)
+ */
+.github-markdown-theme .md-code-block.md-markers-hidden:not(.md-unhandled-scroll) > :is(.md-marker-openFence, .md-marker-closeFence) {
+    display: none;
+}
+
+.github-markdown-theme .md-code-block.md-markers-hidden:not(.md-unhandled-scroll) > code {
+    display: block;
+    margin-top: -1lh;
 }

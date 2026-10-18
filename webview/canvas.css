@@ -9,6 +9,13 @@
  * The markdown typography itself comes from `@vscode/markdown-editor/themes/github.css`
  * (scoped under `.github-markdown-theme`); this file only covers the page
  * chrome around it.
+ *
+ * Caveat: in the real webview VS Code writes the active theme's colors as
+ * inline custom properties on `<html>`, which out-rank these `:root` pins.
+ * The pins below are therefore a fallback (they cover the standalone harness
+ * and properties no theme defines); where VS Code's own injected default
+ * stylesheet would otherwise win — code ink, `a:hover`, the blockquote fill —
+ * the override is an explicit color in `github-light.css`.
  */
 
 :root {
@@ -80,4 +87,70 @@ body {
 /* Keep documents vertically full so short notes don't jump the scroll origin. */
 .md-editor {
     min-height: 100%;
+}
+
+/*
+ * Scrollbars: thin, transparent track, muted thumb — like github.com. The
+ * standard properties replace the thick workbench-styled `::-webkit-scrollbar`
+ * VS Code injects (its slider/track colors came out as a dark bar under light
+ * code blocks).
+ */
+#editor,
+#editor * {
+    scrollbar-width: thin;
+    scrollbar-color: #818b9866 transparent;
+}
+
+#editor *:hover {
+    scrollbar-color: #818b98b3 transparent;
+}
+
+/*
+ * Theme toggle (see `themeToggle.ts`): lives in the engine's sticky toggle host,
+ * left of the edit/read-only pill, and borrows the pill's `--md-readonly-*`
+ * colors (pinned per theme below and in `github-dark.css`).
+ */
+.github-markdown-theme {
+    --md-readonly-background: #f6f8fa;
+    --md-readonly-background-hover: #eef1f4;
+    --md-readonly-border: #d1d9e0;
+    --md-readonly-border-hover: #afb8c1;
+    --md-readonly-foreground: #59636e;
+    --md-readonly-accent: #0969da;
+    --md-readonly-accent-foreground: #ffffff;
+}
+
+.gh-theme-toggle {
+    position: absolute;
+    top: 4px;
+    right: calc(var(--md-readonly-toggle-inset, 8px) + var(--md-readonly-toggle-width, 58px) + 8px);
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid var(--md-readonly-border);
+    border-radius: 50%;
+    background: var(--md-readonly-background);
+    color: var(--md-readonly-foreground);
+    cursor: pointer;
+    pointer-events: auto;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.gh-source-button {
+    /* One 32px button + 8px gap further left than the theme toggle. */
+    right: calc(var(--md-readonly-toggle-inset, 8px) + var(--md-readonly-toggle-width, 58px) + 48px);
+}
+
+.gh-theme-toggle:hover {
+    border-color: var(--md-readonly-border-hover);
+    background: var(--md-readonly-background-hover);
+}
+
+.gh-theme-toggle:focus-visible {
+    outline: 2px solid var(--md-readonly-accent);
+    outline-offset: 1px;
 }
