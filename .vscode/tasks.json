@@ -2,26 +2,6 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Watch",
-      "type": "shell",
-      "command": "bash .vscode/tasks.sh",
-      "problemMatcher": [],
-      "group": {
-        "kind": "build"
-      },
-      "icon": {
-        "id": "sync",
-        "color": "terminal.ansiBlue"
-      },
-      "presentation": {
-        "clear": true,
-        "focus": true,
-        "panel": "shared",
-        "reveal": "always",
-        "showReuseMessage": false
-      }
-    },
-    {
       "label": "Claude",
       "type": "shell",
       "command": "claude --allow-dangerously-skip-permissions --dangerously-skip-permissions --model sonnet",
@@ -91,11 +71,11 @@
     {
       "label": "Dev",
       "dependsOn": [
-        "Watch",
         "Claude",
         "Codex",
         "Antigravity",
-        "OpenCode"
+        "OpenCode",
+        "Install Locally"
       ],
       "dependsOrder": "parallel",
       "group": {
@@ -105,13 +85,37 @@
       "problemMatcher": []
     },
     {
-      "label": "Package VSIX",
+      "label": "Install Locally",
+      "detail": "Package a VSIX and install it into this VS Code (reload the window afterwards)",
       "type": "shell",
-      "command": "npm run package",
+      "command": "npm run install:local",
       "options": {
         "cwd": "${workspaceFolder}"
       },
       "problemMatcher": [],
+      "group": {
+        "kind": "build"
+      },
+      "icon": {
+        "id": "cloud-download",
+        "color": "terminal.ansiGreen"
+      },
+      "presentation": {
+        "clear": true,
+        "focus": true,
+        "panel": "dedicated",
+        "reveal": "always",
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "Package VSIX",
+      "type": "shell",
+      "command": "npm run package",
+      "problemMatcher": [],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
       "group": {
         "kind": "test",
         "isDefault": true
