@@ -41,6 +41,9 @@ const configs = [
     format: 'iife',
     platform: 'browser',
     target: ['es2020'],
+    // `@vscode/diff` (pulled in by the editor) lazily imports `node:fs/promises`
+    // on a Node-only path that never runs in the webview.
+    external: ['node:*'],
     assetNames: 'fonts/[name]-[hash]',
     loader: { '.woff': 'file', '.woff2': 'file', '.ttf': 'file' },
   },
