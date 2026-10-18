@@ -5,13 +5,12 @@
       "name": "Launch GitHub Style Markdown Editor",
       "type": "extensionHost",
       "request": "launch",
-      "runtimeArgs": [
+      "args": [
         "--extensionDevelopmentPath=${workspaceFolder}"
       ],
       "outFiles": [
         "${workspaceFolder}/dist/**/*.js"
-      ],
-      "extensionWorkdir": "${workspaceFolder}"
+      ]
     }
   ]
 }
