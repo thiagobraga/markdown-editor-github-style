@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch GitHub Style Markdown Editor",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeArgs": [
+        "--extensionDevelopmentPath=${workspaceFolder}"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/dist/**/*.js"
+      ],
+      "extensionWorkdir": "${workspaceFolder}"
+    }
+  ]
+}

@@ -1,0 +1,132 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Watch",
+      "type": "shell",
+      "command": "bash .vscode/tasks.sh",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build"
+      },
+      "icon": {
+        "id": "sync",
+        "color": "terminal.ansiBlue"
+      },
+      "presentation": {
+        "clear": true,
+        "focus": true,
+        "panel": "shared",
+        "reveal": "always",
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "Claude",
+      "type": "shell",
+      "command": "claude --allow-dangerously-skip-permissions --dangerously-skip-permissions --model sonnet",
+      "problemMatcher": [],
+      "icon": {
+        "id": "robot",
+        "color": "terminal.ansiYellow"
+      },
+      "presentation": {
+        "clear": true,
+        "focus": false,
+        "panel": "dedicated",
+        "reveal": "always",
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "Codex",
+      "type": "shell",
+      "command": "codex --dangerously-bypass-approvals-and-sandbox --no-daemon -m gpt-6-sol",
+      "problemMatcher": [],
+      "icon": {
+        "id": "robot"
+      },
+      "presentation": {
+        "clear": true,
+        "focus": false,
+        "panel": "dedicated",
+        "reveal": "always",
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "Antigravity",
+      "type": "shell",
+      "command": "agy --dangerously-skip-permissions",
+      "problemMatcher": [],
+      "icon": {
+        "id": "robot",
+        "color": "terminal.ansiGreen"
+      },
+      "presentation": {
+        "clear": true,
+        "focus": false,
+        "panel": "dedicated",
+        "reveal": "always",
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "OpenCode",
+      "type": "shell",
+      "command": "opencode --auto",
+      "problemMatcher": [],
+      "icon": {
+        "id": "robot",
+        "color": "terminal.ansiBlack"
+      },
+      "presentation": {
+        "clear": true,
+        "focus": false,
+        "panel": "dedicated",
+        "reveal": "always",
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "Dev",
+      "dependsOn": [
+        "Watch",
+        "Claude",
+        "Codex",
+        "Antigravity",
+        "OpenCode"
+      ],
+      "dependsOrder": "parallel",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Package VSIX",
+      "type": "shell",
+      "command": "npm run package",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "icon": {
+        "id": "package",
+        "color": "terminal.ansiMagenta"
+      },
+      "presentation": {
+        "clear": true,
+        "focus": true,
+        "panel": "dedicated",
+        "reveal": "always",
+        "showReuseMessage": false
+      }
+    }
+  ]
+}

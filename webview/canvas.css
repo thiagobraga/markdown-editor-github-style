@@ -1,0 +1,83 @@
+/*
+ * Canvas overrides for the GitHub Style Markdown Editor.
+ *
+ * The editor component reads VS Code theme CSS variables (`--vscode-*`), which
+ * would otherwise follow the active workbench theme. This webview always pins
+ * them to GitHub Primer "light" values so the editor looks like GitHub in light
+ * mode, even when VS Code uses a dark theme.
+ *
+ * The markdown typography itself comes from `@vscode/markdown-editor/themes/github.css`
+ * (scoped under `.github-markdown-theme`); this file only covers the page
+ * chrome around it.
+ */
+
+:root {
+    color-scheme: light;
+
+    /* Surface */
+    --vscode-editor-background: #ffffff;
+    --vscode-editor-foreground: #1f2328;
+    --vscode-foreground: #1f2328;
+
+    /* Widgets / chrome inside blocks */
+    --vscode-editorWidget-background: #f6f8fa;
+    --vscode-editorWidget-foreground: #1f2328;
+    --vscode-editorWidget-border: #d1d9e0;
+
+    --vscode-input-background: #ffffff;
+    --vscode-input-foreground: #1f2328;
+    --vscode-input-border: #d1d9e0;
+
+    --vscode-button-secondaryBackground: #f6f8fa;
+    --vscode-button-secondaryForeground: #1f2328;
+    --vscode-button-secondaryBorder: #d1d9e0;
+    --vscode-button-border: #d1d9e0;
+
+    --vscode-focusBorder: #0969da66;
+    --vscode-focusOutline: #0969da33;
+
+    /* Content colors — same values GitHub uses */
+    --vscode-textLink-foreground: #0969da;
+    --vscode-textLink-activeForeground: #0550ae;
+    --vscode-descriptionForeground: #59636e;
+    --vscode-errorForeground: #cf222e;
+
+    /* Charts palette */
+    --vscode-charts-green: #1a7f37;
+    --vscode-charts-red: #cf222e;
+    --vscode-charts-yellow: #9a6700;
+
+    /* Caret */
+    --vscode-editorCursor-foreground: #1f2328;
+
+    /* Scrollbar */
+    --vscode-scrollbarSlider-background: #8c959f26;
+    --vscode-scrollbarSlider-hoverBackground: #8c959f4d;
+    --vscode-scrollbarSlider-activeBackground: #8c959f66;
+
+    /* Widget shadow */
+    --vscode-widget-shadow: #0505081a;
+}
+
+html,
+body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: #ffffff;
+    color: #1f2328;
+}
+
+/* The scroll container is `#editor` (see `main.ts`): scrolling, cursor and the
+ * editor element live directly inside it. */
+#editor {
+    height: 100%;
+    overflow: auto;
+    overscroll-behavior: contain;
+    background: #ffffff;
+}
+
+/* Keep documents vertically full so short notes don't jump the scroll origin. */
+.md-editor {
+    min-height: 100%;
+}

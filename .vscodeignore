@@ -1,0 +1,10 @@
+.vscode/**
+src/**
+webview/**
+types/**
+node_modules/**
+esbuild.mjs
+tsconfig.json
+.gitignore
+**/*.map
+**/tsconfig.tsbuildinfo

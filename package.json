@@ -1,0 +1,57 @@
+{
+  "name": "markdown-editor-github-style",
+  "displayName": "Markdown Preview Editor Github Style",
+  "description": "Realtime WYSIWYG markdown editing that looks like GitHub Pages \u2014 the new inline markdown editor experience rendered with GitHub's own light styling.",
+  "version": "0.1.0",
+  "publisher": "your-publisher",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "markdown",
+    "github",
+    "wiki",
+    "wysiwyg",
+    "preview"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onCustomEditor:githubStyle.markdownEditor"
+  ],
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "githubStyle.markdownEditor",
+        "displayName": "GitHub Style Markdown Editor",
+        "selector": [
+          {
+            "filenamePattern": "*.md"
+          }
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc --noEmit && node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "package": "npx @vscode/vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "@vscode/markdown-editor": "0.0.2-0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/vscode": "^1.100.0",
+    "@vscode/observables": "0.1.1-0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.7.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-user/markdown-editor-github-style"
+  }
+}
