@@ -1,8 +1,14 @@
-# Markdown Editor Github Style
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="public/images/markdown-editor-github-style-dark-transparent.png">
+    <source media="(prefers-color-scheme: light)" srcset="public/images/markdown-editor-github-style-light-transparent.png">
+    <img src="public/images/markdown-editor-github-style-light-transparent.png" alt="Markdown Editor Github Style logo" width="320">
+  </picture>
+</p>
+
+<h1 align="center">Markdown Editor Github Style</h1>
 
 Realtime WYSIWYG markdown editing that looks like GitHub Pages in light mode - the same inline editor experience VS Code's new built-in Markdown Editor gives you, rendered with GitHub's own markdown styling.
-
-![](https://github.com/your-user/markdown-editor-github-style/raw/main/docs/screenshot.png)
 
 ## Why
 
@@ -26,7 +32,16 @@ realtime — regardless of whether VS Code itself uses a dark theme.
 - GitHub light typography and palette (Primer values), pinned independent of
   your VS Code theme
 - Math rendering via bundled KaTeX (fonts included)
-- Click links to open them in the browser
+- Raw HTML rendered like GitHub (sanitized with GitHub's allowlist): centered
+  logos, `<picture>` (variant for the active theme), `<details>`, `<kbd>`, `<sub>`/`<sup>`…
+- Relative images (`![](docs/shot.png)`, `<img src="public/logo.png">`) load
+  from the workspace
+- GitHub alerts (`> [!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`,
+  `[!CAUTION]`)
+- Edit / read-only toggle (top-right, like the built-in Markdown Editor); the
+  last choice becomes the default for new editors
+- Links: web links open in the browser, relative links open the file in VS
+  Code, `#anchor` links jump to the heading
 - Shares the underlying document with the text editor — edit in either view,
   both stay in sync
 - Scroll position persists per document
@@ -92,9 +107,37 @@ npm run package           # compile + vsce -> .vsix
 
 Dev workflow (VS Code tasks, mirrors [.vscode/tasks.json](.vscode/tasks.json)):
 
-- **Dev** (default build) — opens agent tabs (Claude, Codex, Antigravity,
-  OpenCode) alongside a compile + `esbuild --watch` terminal
-- **Package VSIX** (default test) — bundles and packages a `.vsix` via `vsce`
+- **Dev** (default build, F6) — opens agent tabs (Claude, Codex, Antigravity,
+  OpenCode) alongside **Install Locally**
+- **Package VSIX** (default test, F7) — bundles and packages a `.vsix` via `vsce`
+- **Install Locally** — packages a `.vsix` and installs it into your everyday
+  VS Code (`npm run install:local`); run _Developer: Reload Window_ afterwards.
+
+### Debugging
+
+`.vscode/launch.json` ships two configs:
+
+- **Launch Markdown Editor Github Style** — the usual F5 flow. Opens an
+  Extension Development Host; reopen a `.md` with _Reopen Editor With… →
+  Markdown Editor Github Style_. Breakpoints in `src/` and `webview/` both bind
+  (esbuild emits source maps into `dist/` and `media/`, and the launch config
+  sets `resolveSourceMapLocations` + `debugWebviews` so the webview bundle and
+  webworkers debug too).
+- **Attach to Extension Host (installed VSIX)** — for a packaged/installed
+  copy. Start VS Code with `code --inspect-extensions=9229`, then launch this
+  config; points the debugger at the installed extension's code via its
+  `.map` files.
+
+Debug-only side-by-side comparison: in an Extension Development Host, opening a
+`.md` in _Markdown Editor Github Style_ also opens VS Code's built-in **Markdown
+Editor** (`vscode.markdown.editor`) in the column beside it, so the two
+renderings can be compared while editing. This is gated on
+`ExtensionMode.Development`; packaged builds run in Production mode and never
+open the extra pane.
+
+Maps are dev-only: `.vscodeignore` excludes `**/*.map`, so the packaged
+`.vsix` never carries them — installed copies get maps only if you install the
+unbuilt folder, or re-enable them deliberately for a debug VSIX.
 
 ## CI/CD
 
