@@ -24,7 +24,7 @@ export interface StubPanel {
  * itself, with the message traffic captured instead of crossing a real
  * webview boundary.
  */
-export function createStubPanel(): StubPanel {
+export function createStubPanel(options: { viewColumn?: number } = {}): StubPanel {
     const messages: unknown[] = [];
     let receiveListener: ((message: unknown) => void) | undefined;
 
@@ -45,6 +45,7 @@ export function createStubPanel(): StubPanel {
 
     const panel = {
         webview,
+        viewColumn: options.viewColumn ?? 1,
         onDidDispose: () => ({ dispose(): void { /* noop */ } }),
     } as unknown as WebviewPanel;
 

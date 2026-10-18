@@ -27,13 +27,41 @@ export class Uri {
         return new Uri(value);
     }
 
+    /** Joins like the real `Uri.joinPath`: posix-style, resolving `.` and `..`. */
     static joinPath(base: Uri, ...parts: string[]): Uri {
-        return new Uri([base.toString().replace(/\/+$/, ''), ...parts].join('/'));
+        const match = /^([a-z][a-z0-9+.-]*:\/\/[^/]*)(.*)$/i.exec(base.toString());
+        const prefix = match?.[1] ?? '';
+        const segments: string[] = [];
+        for (const segment of [match?.[2] ?? base.toString(), ...parts].join('/').split('/')) {
+            if (segment === '' || segment === '.') {
+                continue;
+            }
+            if (segment === '..') {
+                segments.pop();
+            } else {
+                segments.push(segment);
+            }
+        }
+        return new Uri(`${prefix}/${segments.join('/')}`);
     }
 
     toString(): string {
         return this.#value;
     }
+}
+
+export enum ViewColumn {
+    Active = -1,
+    Beside = -2,
+    One = 1,
+    Two = 2,
+}
+
+export class TabInputCustom {
+    constructor(
+        public readonly uri: Uri,
+        public readonly viewType: string,
+    ) {}
 }
 
 export interface RecordedEdit {
@@ -42,6 +70,31 @@ export interface RecordedEdit {
     readonly endExclusive: number;
     readonly text: string;
 }
+
+export interface RecordedCommand {
+    readonly command: string;
+    readonly args: readonly unknown[];
+}
+
+export const commands = {
+    recorded: [] as RecordedCommand[],
+
+    executeCommand(command: string, ...args: unknown[]): Promise<unknown> {
+        commands.recorded.push({ command, args });
+        return Promise.resolve(undefined);
+    },
+};
+
+export interface MockTabGroup {
+    viewColumn: number;
+    tabs: Array<{ input: unknown }>;
+}
+
+export const window = {
+    tabGroups: {
+        all: [] as MockTabGroup[],
+    },
+};
 
 export class WorkspaceEdit {
     readonly edits: RecordedEdit[] = [];
@@ -105,7 +158,18 @@ export function createDocument(path: string, text: string): FakeTextDocument {
     return document;
 }
 
+export interface MockWorkspaceFolder {
+    readonly uri: Uri;
+}
+
 export const workspace = {
+    isTrusted: true,
+    workspaceFolders: [] as MockWorkspaceFolder[],
+
+    getWorkspaceFolder(uri: Uri): MockWorkspaceFolder | undefined {
+        return workspace.workspaceFolders.find(folder => uri.toString().startsWith(`${folder.uri.toString()}/`));
+    },
+
     onDidChangeTextDocument(listener: ChangeListener): { dispose(): void } {
         changeListeners.push(listener);
         return {
@@ -142,9 +206,31 @@ export const env = {
     },
 };
 
+/** In-memory `vscode.Memento` (e.g. `ExtensionContext.globalState`). */
+export class FakeMemento {
+    readonly values = new Map<string, unknown>();
+
+    get<T>(key: string, defaultValue?: T): T | undefined {
+        return this.values.has(key) ? this.values.get(key) as T : defaultValue;
+    }
+
+    update(key: string, value: unknown): Promise<void> {
+        this.values.set(key, value);
+        return Promise.resolve();
+    }
+
+    keys(): readonly string[] {
+        return [...this.values.keys()];
+    }
+}
+
 /** Clears all recorded state; call from `beforeEach`. */
 export function resetMock(): void {
     documents.clear();
     changeListeners.length = 0;
     env.openedUris.length = 0;
+    commands.recorded.length = 0;
+    window.tabGroups.all.length = 0;
+    workspace.isTrusted = true;
+    workspace.workspaceFolders = [];
 }

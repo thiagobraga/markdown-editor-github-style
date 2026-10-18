@@ -130,6 +130,32 @@ suite('markdown-editor-github-style', () => {
         }
     });
 
+    test('opens the markdown source in a text editor beside on openSource', async () => {
+        const uri = await writeMarkdownFile('source.md', '# Source');
+        try {
+            await vscode.commands.executeCommand('vscode.openWith', uri, VIEW_TYPE);
+            await waitFor(() => findCustomEditorTab(uri), 'the custom editor tab to open');
+            const document = await vscode.workspace.openTextDocument(uri);
+            const stub = createStubPanel();
+            const provider = new GithubStyleMarkdownEditorProvider(vscode.Uri.file(workspaceDir));
+            provider.resolveCustomTextEditor(document, stub.panel, new vscode.CancellationTokenSource().token);
+
+            stub.send({ type: 'openSource' });
+
+            const tab = await waitFor(
+                () => vscode.window.tabGroups.all
+                    .flatMap(group => group.tabs)
+                    .find(candidate => candidate.input instanceof vscode.TabInputText
+                        && candidate.input.uri.toString() === uri.toString()),
+                'the text editor tab to open',
+            );
+            await vscode.window.tabGroups.close(tab);
+        } finally {
+            await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+            await vscode.workspace.fs.delete(uri);
+        }
+    });
+
     test('pushes refreshed content when the document changes outside the editor', async () => {
         const uri = await writeMarkdownFile('sync.md', 'one');
         try {

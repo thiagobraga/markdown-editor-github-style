@@ -11,22 +11,40 @@ interface EditMessage {
 interface UndoMessage { type: 'undo'; }
 interface RedoMessage { type: 'redo'; }
 interface OpenLinkMessage { type: 'openLink'; href: string; }
+interface SetReadonlyMessage { type: 'setReadonly'; readonly: boolean; }
+interface SetThemeMessage { type: 'setTheme'; theme: string; }
+interface OpenSourceMessage { type: 'openSource'; }
 
-type Inbound = EditMessage | UndoMessage | RedoMessage | OpenLinkMessage;
+type Inbound = EditMessage | UndoMessage | RedoMessage | OpenLinkMessage | SetReadonlyMessage | SetThemeMessage | OpenSourceMessage;
+
+/** Global state key for the edit/read-only mode new editors open in. */
+export const readonlyStateKey = 'githubStyle.markdownEditor.readonly';
+export const themeStateKey = 'githubStyle.markdownEditor.theme';
+
+const themePreferences = ['auto', 'light', 'dark'];
+
+/** VS Code's built-in Markdown Editor, the editor this extension restyles. */
+export const builtInMarkdownEditorViewType = 'vscode.markdown.editor';
 
 export class GithubStyleMarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 
     public static readonly viewType = 'githubStyle.markdownEditor';
 
     private readonly _extensionUri: vscode.Uri;
+    /** Debug builds only: mirror each editor with the built-in one for comparison. */
+    #debugSideBySide: boolean;
+    /** Remembers the last edit/read-only toggle as the default for new editors. */
+    #globalState: vscode.Memento | undefined;
     #isApplying = false;
     /** Undo/redo history powering the in-webview stack, one per document. */
     #histories = new Map<string, DocumentHistory>();
     /** Open webview count per document; the history is dropped with the last one. */
     #webviewCounts = new Map<string, number>();
 
-    constructor(extensionUri: vscode.Uri) {
+    constructor(extensionUri: vscode.Uri, debugSideBySide = false, globalState?: vscode.Memento) {
         this._extensionUri = extensionUri;
+        this.#debugSideBySide = debugSideBySide;
+        this.#globalState = globalState;
     }
 
     public resolveCustomTextEditor(
@@ -47,6 +65,7 @@ export class GithubStyleMarkdownEditorProvider implements vscode.CustomTextEdito
             enableScripts: true,
             localResourceRoots: [
                 vscode.Uri.joinPath(this._extensionUri, 'media'),
+                ...this.#documentResourceRoots(document),
             ],
         };
 
@@ -77,6 +96,63 @@ export class GithubStyleMarkdownEditorProvider implements vscode.CustomTextEdito
         webview.onDidReceiveMessage((message: Inbound) => {
             this.#handleMessage(document, webview, message);
         });
+
+        if (this.#debugSideBySide) {
+            this.#openBuiltInBeside(document, webviewPanel);
+        }
+    }
+
+    /**
+     * Debug-only: open VS Code's built-in Markdown Editor in the column beside
+     * this editor so the two renderings can be compared side-by-side. Skipped
+     * while the built-in editor already shows this document.
+     */
+    #openBuiltInBeside(document: vscode.TextDocument, panel: vscode.WebviewPanel): void {
+        if (this.#isBuiltInEditorOpen(document.uri)) {
+            return;
+        }
+        const column = panel.viewColumn;
+        void vscode.commands.executeCommand(
+            'vscode.openWith',
+            document.uri,
+            builtInMarkdownEditorViewType,
+            {
+                viewColumn: column === undefined ? vscode.ViewColumn.Beside : (column + 1) as vscode.ViewColumn,
+                preserveFocus: true,
+                preview: false,
+            },
+        ).then(undefined, error => {
+            // The built-in editor may be absent on older or trimmed-down hosts.
+            console.warn(`[githubStyle] could not open ${builtInMarkdownEditorViewType} side-by-side:`, error);
+        });
+    }
+
+    #isBuiltInEditorOpen(uri: vscode.Uri): boolean {
+        const key = uri.toString();
+        return vscode.window.tabGroups.all.some(group =>
+            group.tabs.some(tab =>
+                tab.input instanceof vscode.TabInputCustom
+                && tab.input.viewType === builtInMarkdownEditorViewType
+                && tab.input.uri.toString() === key,
+            ),
+        );
+    }
+
+    /**
+     * Folders the webview may load images/videos from, so relative paths in the
+     * markdown (`![](docs/shot.png)`, `<img src="public/logo.png">`) resolve
+     * against the document like on GitHub: the workspace folders when the
+     * document is inside one, else its own folder. Untrusted workspaces get
+     * none, matching VS Code's built-in markdown editor.
+     */
+    #documentResourceRoots(document: vscode.TextDocument): vscode.Uri[] {
+        if (!vscode.workspace.isTrusted) {
+            return [];
+        }
+        if (vscode.workspace.getWorkspaceFolder(document.uri)) {
+            return (vscode.workspace.workspaceFolders ?? []).map(folder => folder.uri);
+        }
+        return [vscode.Uri.joinPath(document.uri, '..')];
     }
 
     #handleMessage(document: vscode.TextDocument, webview: vscode.Webview, message: Inbound): void {
@@ -99,8 +175,23 @@ export class GithubStyleMarkdownEditorProvider implements vscode.CustomTextEdito
                 break;
             }
             case 'openLink':
-                if (this.#isHttpLike(message.href)) {
-                    void vscode.env.openExternal(vscode.Uri.parse(message.href, true));
+                this.#openLink(document, message.href);
+                break;
+            case 'setReadonly':
+                void this.#globalState?.update(readonlyStateKey, message.readonly === true);
+                break;
+            case 'openSource':
+                // The raw markdown in VS Code's plain text editor, beside this one.
+                void vscode.commands.executeCommand('vscode.openWith', document.uri, 'default', {
+                    viewColumn: vscode.ViewColumn.Beside,
+                    preview: false,
+                }).then(undefined, (error: unknown) => {
+                    void vscode.window.showErrorMessage(`Could not open the markdown source: ${String(error)}`);
+                });
+                break;
+            case 'setTheme':
+                if (themePreferences.includes(message.theme)) {
+                    void this.#globalState?.update(themeStateKey, message.theme);
                 }
                 break;
         }
@@ -116,8 +207,42 @@ export class GithubStyleMarkdownEditorProvider implements vscode.CustomTextEdito
         return history;
     }
 
-    #isHttpLike(href: string): boolean {
-        return href.startsWith('https://') || href.startsWith('http://');
+    /**
+     * Web and mail links open externally; relative links open the linked file
+     * in VS Code, resolved like GitHub does (against the document's folder, or
+     * the workspace folder for `/`-rooted paths). Every other scheme
+     * (`command:`, `file:`, `javascript:`…) is refused.
+     */
+    #openLink(document: vscode.TextDocument, href: string): void {
+        if (/^(https?|mailto):/i.test(href)) {
+            void vscode.env.openExternal(vscode.Uri.parse(href, true));
+            return;
+        }
+        const target = this.#resolveRelativeLink(document, href);
+        if (target) {
+            void vscode.commands.executeCommand('vscode.open', target);
+        }
+    }
+
+    #resolveRelativeLink(document: vscode.TextDocument, href: string): vscode.Uri | undefined {
+        if (/^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith('//')) {
+            return undefined;
+        }
+        const path = href.replace(/[?#].*$/, '');
+        if (path === '') {
+            return undefined;
+        }
+        let decoded: string;
+        try {
+            decoded = decodeURIComponent(path);
+        } catch {
+            decoded = path;
+        }
+        if (decoded.startsWith('/')) {
+            const root = vscode.workspace.getWorkspaceFolder(document.uri)?.uri ?? vscode.Uri.joinPath(document.uri, '..');
+            return vscode.Uri.joinPath(root, decoded);
+        }
+        return vscode.Uri.joinPath(document.uri, '..', decoded);
     }
 
     #applyDocumentEdit(document: vscode.TextDocument, start: number, endExclusive: number, text: string): void {
@@ -163,11 +288,13 @@ export class GithubStyleMarkdownEditorProvider implements vscode.CustomTextEdito
         const nonce = Date.now().toString(36) + Math.floor(Math.random() * 1e9).toString(36);
         const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'main.js'));
         const stylesUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'main.css'));
+        // Relative image/link paths in the markdown resolve against the document.
+        const baseUri = webview.asWebviewUri(document.uri);
         const initial = {
             content: document.getText(),
             documentVersion: document.version,
-            /** Always light: this extension's purpose is GitHub's light markdown look. */
-            themeKind: 'light',
+            theme: this.#globalState?.get<string>(themeStateKey, 'auto') ?? 'auto',
+            readonly: this.#globalState?.get<boolean>(readonlyStateKey, false) ?? false,
         };
 
         return `<!DOCTYPE html>
@@ -179,8 +306,10 @@ export class GithubStyleMarkdownEditorProvider implements vscode.CustomTextEdito
         script-src 'nonce-${nonce}';
         style-src ${cspSource} 'unsafe-inline';
         img-src ${cspSource} data: https:;
+        media-src ${cspSource} data: https:;
         font-src ${cspSource} data:;
     ">
+    <base href="${escapeAttribute(baseUri.toString())}">
     <meta name="github-style-markdown-editor-initial-state" content="${encodeURIComponent(JSON.stringify(initial))}">
     <link href="${stylesUri}" rel="stylesheet">
     <script nonce="${nonce}" src="${scriptUri}" defer></script>
@@ -191,4 +320,8 @@ export class GithubStyleMarkdownEditorProvider implements vscode.CustomTextEdito
 </body>
 </html>`;
     }
+}
+
+function escapeAttribute(value: string): string {
+    return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
