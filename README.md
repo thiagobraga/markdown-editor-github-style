@@ -80,8 +80,11 @@ realtime — regardless of whether VS Code itself uses a dark theme.
 
 ```bash
 npm install
-npm run compile     # typecheck + bundle -> media/
-npm run package     # vsce -> .vsix
+npm run compile           # typecheck + bundle -> dist/ + media/
+npm run lint              # eslint
+npm test                  # unit tests (vitest)
+npm run test:integration  # integration tests in a real VS Code (downloads it once)
+npm run package           # compile + vsce -> .vsix
 ```
 
 Dev workflow (VS Code tasks, mirrors [.vscode/tasks.json](.vscode/tasks.json)):
@@ -89,6 +92,34 @@ Dev workflow (VS Code tasks, mirrors [.vscode/tasks.json](.vscode/tasks.json)):
 - **Dev** (default build) — opens agent tabs (Claude, Codex, Antigravity,
   OpenCode) alongside a compile + `esbuild --watch` terminal
 - **Package VSIX** (default test) — bundles and packages a `.vsix` via `vsce`
+
+## CI/CD
+
+- **CI** ([`ci.yml`](.github/workflows/ci.yml)) — on pushes to `main` and pull
+  requests: lint, typecheck, unit tests, integration tests in a real VS Code,
+  and an uploadable `.vsix` artifact. No secrets required.
+- **Release** ([`release.yml`](.github/workflows/release.yml)) — on `v*.*.*`
+  tags: verifies the tag matches `package.json`, runs lint + unit tests,
+  packages the `.vsix`, publishes to the [VS Code
+  Marketplace](https://marketplace.visualstudio.com) and
+  [Open VSX](https://open-vsx.org), and attaches the `.vsix` to a GitHub
+  release.
+
+### Releasing
+
+1. Bump `version` in `package.json`, update `CHANGELOG.md`, commit.
+2. `git tag v0.2.0 && git push origin v0.2.0` — the release workflow does the rest.
+
+Repository secrets (Settings → Secrets and variables → Actions):
+
+- `VSCE_PAT` — Azure DevOps personal access token with the **Marketplace →
+  Manage** scope, created under the account that owns the publisher configured
+  in `package.json`.
+- `OVSX_PAT` — access token from [open-vsx.org](https://open-vsx.org) after
+  claiming the publisher namespace.
+
+Before the first publish, replace the `publisher` placeholder in `package.json`
+with your real Marketplace publisher id.
 
 ## Built with
 

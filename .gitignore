@@ -4,5 +4,7 @@
 !.vscode/tasks.sh
 node_modules
 dist
+out-test
+.vscode-test
 media/*.map
 *.vsix

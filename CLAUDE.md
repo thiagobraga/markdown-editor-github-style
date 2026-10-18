@@ -1,0 +1,50 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What this is
+
+VS Code extension: a `CustomTextEditorProvider` (`githubStyle.markdownEditor`, selector `*.md`) that gives WYSIWYG markdown editing styled like GitHub light mode. It wraps the engine from `@vscode/markdown-editor` (`EditorModel` + `EditorView` + `EditorController`) and mounts it with the package's `github-markdown-theme`. Always light, independent of the VS Code theme.
+
+## Commands
+
+```bash
+npm run compile           # tsc --noEmit + esbuild (dist/extension.js, media/main.js + main.css + fonts/)
+npm run watch             # esbuild --watch (no typecheck)
+npm run lint              # eslint src webview test
+npm test                  # vitest unit tests
+npx vitest run test/unit/computeTextEdit.test.ts      # single file
+npx vitest run -t "serves a CSP"                      # single test by name
+npm run test:integration  # compile + tsc -p tsconfig.test.json + vscode-test (real VS Code, downloads once; CI uses xvfb-run)
+npm run package           # vsce package --no-dependencies -> .vsix
+```
+
+Debug via `.vscode/launch.json` (Extension Development Host). Reopen a `.md` with *Reopen Editor With… → GitHub Style Markdown Editor*.
+
+## Architecture
+
+Two separately bundled targets (see `esbuild.mjs`):
+
+- **Extension host** — `src/extension.ts` → `dist/extension.js` (CJS, `vscode` external). Registers the provider with `retainContextWhenHidden` and `supportsMultipleEditorsPerDocument`.
+- **Webview** — `webview/main.ts` → `media/main.js` + `media/main.css` (iife, browser; fonts emitted to `media/fonts/`). `media/` is the webview `localResourceRoot`; `media/main.js` is tracked in git, `dist/` is not.
+
+Host ↔ webview protocol (defined in `src/webviewEditorProvider.ts` and the header of `webview/main.ts`; change both sides together):
+
+- host → webview: `{ type: 'content', content }` on external document changes and after undo/redo.
+- webview → host: `{ type: 'edit', start, endExclusive, text }`, `{ type: 'undo' }`, `{ type: 'redo' }`, `{ type: 'openLink', href }` (host only opens http/https).
+- Initial state is passed through a `<meta name="github-style-markdown-editor-initial-state">` tag (URI-encoded JSON), not a message. HTML uses a nonce CSP.
+
+Edit flow: webview `autorun` over `model.sourceText` → `computeTextEdit` (common prefix/suffix diff, `webview/computeTextEdit.ts`) → `edit` message → host applies a `WorkspaceEdit`. `#isApplying` suppresses the host's `onDidChangeTextDocument` echo (and `#isUpdatingFromHost` does the same in the webview) to avoid feedback loops.
+
+Undo/redo is NOT the native document undo stack: the webview intercepts Ctrl/Cmd+Z and the provider keeps its own whole-document snapshot history (`#snapshots`, max 250, keystrokes coalesced within 750 ms). External changes reset the history. Note the history is stored on the provider instance, which is shared across all editors, not per document.
+
+Styling: package CSS (`@vscode/markdown-editor/editor.css`, `themes/github.css`, KaTeX) plus `webview/canvas.css`, which pins `--vscode-*` tokens to Primer light values.
+
+## Testing notes
+
+- Unit tests (`test/unit`) run in Node; `vitest.config.mts` aliases `vscode` to `test/unit/mocks/vscode.ts`, and `test/unit/support/stubPanel.ts` fakes a webview panel. Extend the mock when the provider uses new `vscode` APIs.
+- Integration tests (`test/integration`, mocha) are compiled to `out-test/` by `tsconfig.test.json` (CommonJS) before `vscode-test` runs them (`.vscode-test.mjs`).
+
+## Release
+
+Tag `vX.Y.Z` matching `package.json` version triggers `.github/workflows/release.yml` (publishes to Marketplace and Open VSX; needs `VSCE_PAT` and `OVSX_PAT`). `publisher` in `package.json` is still the placeholder `your-publisher`.

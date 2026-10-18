@@ -25,6 +25,7 @@ import 'katex/dist/katex.min.css';
 import '@vscode/markdown-editor/editor.css';
 import '@vscode/markdown-editor/themes/github.css';
 import './canvas.css';
+import { computeTextEdit } from './computeTextEdit';
 
 interface VsCodeApi {
     postMessage(message: unknown): void;
@@ -55,27 +56,6 @@ function readInitialState(): InitialState {
         throw new Error('Markdown editor initial state is invalid.');
     }
     return { content: candidate.content, documentVersion: candidate.documentVersion ?? 0 };
-}
-
-function computeTextEdit(previousText: string, text: string): { start: number; endExclusive: number; text: string } | undefined {
-    if (previousText === text) {
-        return undefined;
-    }
-    let start = 0;
-    while (start < previousText.length && start < text.length && previousText.charCodeAt(start) === text.charCodeAt(start)) {
-        start++;
-    }
-    let previousEnd = previousText.length;
-    let end = text.length;
-    while (previousEnd > start && end > start && previousText.charCodeAt(previousEnd - 1) === text.charCodeAt(end - 1)) {
-        previousEnd--;
-        end--;
-    }
-    return {
-        start,
-        endExclusive: previousEnd,
-        text: text.slice(start, end),
-    };
 }
 
 class GithubStyleEditor {
