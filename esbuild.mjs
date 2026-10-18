@@ -3,6 +3,10 @@
  *  - extension host  (src/extension.ts)  -> dist/extension.js          (CommonJS, `vscode` external)
  *  - webview bundle  (webview/main.ts)   -> media/main.js + main.css,  (iife, fonts -> media/fonts/)
  *  - typecheck       (tsc --noEmit) is run separately by `npm run compile`
+ *
+ * Maps are always emitted next to each bundle (sourcesContent included) so the
+ * debug hot path maps straight back to the TS sources. They never ship:
+ * .vscodeignore excludes the map files, keeping the packaged VSIX lean.
  */
 import esbuild from 'esbuild';
 import { dirname, join } from 'node:path';
@@ -15,7 +19,7 @@ const watch = process.argv.includes('--watch');
 const common = {
   bundle: true,
   minify: false,
-  sourcemap: false,
+  sourcemap: true,
   logLevel: 'info',
   target: ['es2022'],
   absWorkingDir: root,
