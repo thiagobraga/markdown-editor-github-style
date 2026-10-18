@@ -65,7 +65,8 @@ realtime — regardless of whether VS Code itself uses a dark theme.
 
 - Syntax coloring inside code blocks is not wired yet (code renders styled but
   monochrome); the editor API accepts a syntax highlighter — see roadmap
-- Undo history is per-editor (native document undo is not re-wired yet)
+- Undo history is kept per document by the extension (native document undo is
+  not re-wired yet)
 - No readonly ("locked") mode yet
 - No Mermaid rendering yet (diagrams render as source)
 - GitHub *dark* themes are not built into the package; a dark variant is on the

@@ -100,7 +100,7 @@ suite('markdown-editor-github-style', () => {
         }
     });
 
-    test('applies webview edits to the document and undoes them', async () => {
+    test('applies webview edits to the document and undoes/redoes them', async () => {
         const uri = await writeMarkdownFile('roundtrip.md', 'Title');
         try {
             const document = await vscode.workspace.openTextDocument(uri);
@@ -114,9 +114,16 @@ suite('markdown-editor-github-style', () => {
             stub.send({ type: 'undo' });
             await waitFor(() => (document.getText() === 'Title' ? true : undefined), 'the undo to restore the document');
 
+            stub.send({ type: 'redo' });
+            await waitFor(() => (document.getText() === '# Title' ? true : undefined), 'the redo to reapply the edit');
+
             assert.ok(
                 hasContentMessage(stub.messages, 'Title'),
                 'expected the webview to receive refreshed content after undo',
+            );
+            assert.ok(
+                hasContentMessage(stub.messages, '# Title'),
+                'expected the webview to receive refreshed content after redo',
             );
         } finally {
             await vscode.workspace.fs.delete(uri);

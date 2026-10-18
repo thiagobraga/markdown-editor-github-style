@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { DocumentHistory } from './documentHistory';
 
 interface EditMessage {
     type: 'edit';
@@ -13,19 +14,16 @@ interface OpenLinkMessage { type: 'openLink'; href: string; }
 
 type Inbound = EditMessage | UndoMessage | RedoMessage | OpenLinkMessage;
 
-const MAX_HISTORY = 250;
-const COALESCE_MS = 750;
-
 export class GithubStyleMarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 
     public static readonly viewType = 'githubStyle.markdownEditor';
 
     private readonly _extensionUri: vscode.Uri;
     #isApplying = false;
-    /** Whole-document history used by the in-webview undo/redo stack. */
-    #snapshots: string[] = [];
-    #snapshotIndex = -1;
-    #lastSnapshotAt = 0;
+    /** Undo/redo history powering the in-webview stack, one per document. */
+    #histories = new Map<string, DocumentHistory>();
+    /** Open webview count per document; the history is dropped with the last one. */
+    #webviewCounts = new Map<string, number>();
 
     constructor(extensionUri: vscode.Uri) {
         this._extensionUri = extensionUri;
@@ -37,6 +35,13 @@ export class GithubStyleMarkdownEditorProvider implements vscode.CustomTextEdito
         _token: vscode.CancellationToken,
     ): void {
         const webview = webviewPanel.webview;
+        const key = document.uri.toString();
+
+        this.#webviewCounts.set(key, (this.#webviewCounts.get(key) ?? 0) + 1);
+        if (!this.#histories.has(key)) {
+            // Seed the history so undo bottoms out at the state the editor opened with.
+            this.#histories.set(key, new DocumentHistory(document.getText()));
+        }
 
         webview.options = {
             enableScripts: true,
@@ -48,52 +53,67 @@ export class GithubStyleMarkdownEditorProvider implements vscode.CustomTextEdito
         webviewPanel.webview.html = this.#getHtml(webview, document);
 
         const dispose = vscode.workspace.onDidChangeTextDocument(event => {
-            if (event.document.uri.toString() !== document.uri.toString()) {
+            if (event.document.uri.toString() !== key) {
                 return;
             }
             if (this.#isApplying) {
                 return;
             }
             // External change (other editor, disk write, git checkout): resync and drop stale history.
-            this.#snapshots = [document.getText()];
-            this.#snapshotIndex = 0;
+            this.#historyFor(document).reset(document.getText());
             void webview.postMessage({ type: 'content', content: document.getText() });
         });
-        webviewPanel.onDidDispose(() => dispose.dispose(), undefined, []);
+        webviewPanel.onDidDispose(() => {
+            dispose.dispose();
+            const remaining = (this.#webviewCounts.get(key) ?? 1) - 1;
+            if (remaining > 0) {
+                this.#webviewCounts.set(key, remaining);
+                return;
+            }
+            this.#webviewCounts.delete(key);
+            this.#histories.delete(key);
+        }, undefined, []);
 
         webview.onDidReceiveMessage((message: Inbound) => {
             this.#handleMessage(document, webview, message);
         });
-
-        // Push the first content snapshot so undo starts from the opened state.
-        this.#snapshots = [document.getText()];
-        this.#snapshotIndex = 0;
     }
 
     #handleMessage(document: vscode.TextDocument, webview: vscode.Webview, message: Inbound): void {
         switch (message.type) {
             case 'edit':
-                this.#snapshot(document.getText());
                 this.#applyDocumentEdit(document, message.start, message.endExclusive, message.text);
                 break;
-            case 'undo':
-                if (this.#snapshotIndex > 0) {
-                    this.#snapshotIndex--;
-                    this.#applyAndEcho(document, webview, this.#snapshots[this.#snapshotIndex]);
+            case 'undo': {
+                const previous = this.#historyFor(document).undo();
+                if (previous !== undefined) {
+                    this.#applyAndEcho(document, webview, previous);
                 }
                 break;
-            case 'redo':
-                if (this.#snapshotIndex < this.#snapshots.length - 1) {
-                    this.#snapshotIndex++;
-                    this.#applyAndEcho(document, webview, this.#snapshots[this.#snapshotIndex]);
+            }
+            case 'redo': {
+                const next = this.#historyFor(document).redo();
+                if (next !== undefined) {
+                    this.#applyAndEcho(document, webview, next);
                 }
                 break;
+            }
             case 'openLink':
                 if (this.#isHttpLike(message.href)) {
                     void vscode.env.openExternal(vscode.Uri.parse(message.href, true));
                 }
                 break;
         }
+    }
+
+    #historyFor(document: vscode.TextDocument): DocumentHistory {
+        const key = document.uri.toString();
+        let history = this.#histories.get(key);
+        if (!history) {
+            history = new DocumentHistory(document.getText());
+            this.#histories.set(key, history);
+        }
+        return history;
     }
 
     #isHttpLike(href: string): boolean {
@@ -107,7 +127,15 @@ export class GithubStyleMarkdownEditorProvider implements vscode.CustomTextEdito
         const last = document.positionAt(Math.min(endExclusive, current.length));
         edit.replace(document.uri, new vscode.Range(first, last), text);
         this.#isApplying = true;
-        Promise.resolve(vscode.workspace.applyEdit(edit)).finally(() => {
+        Promise.resolve(vscode.workspace.applyEdit(edit)).then(applied => {
+            this.#isApplying = false;
+            if (applied) {
+                // Record the state the document settled on, now that the edit
+                // is actually in; recording before applying would leave the
+                // newest state out of the history, breaking redo.
+                this.#historyFor(document).record(document.getText());
+            }
+        }, () => {
             this.#isApplying = false;
         });
     }
@@ -128,22 +156,6 @@ export class GithubStyleMarkdownEditorProvider implements vscode.CustomTextEdito
         }, () => {
             this.#isApplying = false;
         });
-    }
-
-    #snapshot(current: string): void {
-        const now = Date.now();
-        // Coalesce fast keystrokes into a single undo step.
-        if (now - this.#lastSnapshotAt < COALESCE_MS && this.#snapshotIndex > 0) {
-            this.#lastSnapshotAt = now;
-            return;
-        }
-        this.#snapshots = this.#snapshots.slice(0, this.#snapshotIndex + 1);
-        this.#snapshots.push(current);
-        if (this.#snapshots.length > MAX_HISTORY) {
-            this.#snapshots.shift();
-        }
-        this.#snapshotIndex = this.#snapshots.length - 1;
-        this.#lastSnapshotAt = now;
     }
 
     #getHtml(webview: vscode.Webview, document: vscode.TextDocument): string {
