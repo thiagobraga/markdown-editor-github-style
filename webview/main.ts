@@ -1,5 +1,5 @@
 /**
- * GitHub Style Markdown Editor — webview bootstrap.
+ * Markdown Editor Github Style — webview bootstrap.
  *
  * Builds the same editor component VS Code's built-in markdown editor uses
  * (`@vscode/markdown-editor`), but mounts it with the package's own

@@ -19,7 +19,7 @@ npm run test:integration  # compile + tsc -p tsconfig.test.json + vscode-test (r
 npm run package           # vsce package --no-dependencies -> .vsix
 ```
 
-Debug via `.vscode/launch.json` (Extension Development Host). Reopen a `.md` with *Reopen Editor With… → GitHub Style Markdown Editor*.
+Debug via `.vscode/launch.json` (Extension Development Host). Reopen a `.md` with *Reopen Editor With… → Markdown Editor Github Style*.
 
 ## Architecture
 

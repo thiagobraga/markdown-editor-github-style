@@ -1,5 +1,5 @@
 /*
- * Canvas overrides for the GitHub Style Markdown Editor.
+ * Canvas overrides for the Markdown Editor Github Style.
  *
  * The editor component reads VS Code theme CSS variables (`--vscode-*`), which
  * would otherwise follow the active workbench theme. This webview always pins
