@@ -54,8 +54,12 @@ realtime — regardless of whether VS Code itself uses a dark theme.
   `@vscode/markdown-editor`, mirroring VS Code's own bootstrap code (open
   source, MIT).
 - **Styling**: the package theme provides GitHub typography scoped under the
-  theme class; `webview/canvas.css` pins the surrounding chrome (`--vscode-*`
-  tokens) to Primer light values so the look doesn't follow your workbench.
+  theme class; `webview/github-light.css` re-pins any deltas to the markdown
+  styles **github.com ships today** (1px `hr`, 16px code-block padding, 6px
+  table-header padding, GitHub's selection/caret/checkbox colors, heading
+  hover anchors, the 888px README column) so the port tracks the live site,
+  and `webview/canvas.css` pins the surrounding chrome (`--vscode-*` tokens)
+  to Primer light values so the look doesn't follow your workbench.
 
 ## Known limitations (v0.1)
 

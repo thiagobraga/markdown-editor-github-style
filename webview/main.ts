@@ -24,6 +24,8 @@ import { autorun } from '@vscode/markdown-editor/observables';
 import 'katex/dist/katex.min.css';
 import '@vscode/markdown-editor/editor.css';
 import '@vscode/markdown-editor/themes/github.css';
+/* Pins the package theme to the markdown styles github.com ships today. */
+import './github-light.css';
 import './canvas.css';
 import { computeTextEdit } from './computeTextEdit';
 

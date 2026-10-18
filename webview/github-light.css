@@ -1,0 +1,210 @@
+/*
+ * Port of the markdown typography github.com ships TODAY (verified against the
+ * live `github-markdown.css` source and github.githubassets.com CSS, October
+ * 2025).
+ *
+ * `@vscode/markdown-editor`'s bundled `themes/github.css` is an older
+ * snapshot of GitHub's light markdown styles; this file imports after it and
+ * re-pins the deltas so the rendered document is pixel-identical to a GitHub
+ * README in the current light theme:
+ *
+ *   --fgColor-default:            #1f2328
+ *   --fgColor-muted:              #59636e
+ *   --fgColor-accent:             #0969da
+ *   --borderColor-default:        #d1d9e0
+ *   --borderColor-muted:          #d1d9e0b3
+ *   --bgColor-default:            #ffffff
+ *   --bgColor-muted:              #f6f8fa
+ *   --bgColor-neutral-muted:      #818b981f
+ *   --selection-bgColor:          #0969da33
+ *   --control-checked-bgColor:    #0969da  (hover #0860ca)
+ *
+ * Everything here is scoped under `.github-markdown-theme`, applied in both
+ * active (source) and inactive (rendered) block states, and aware of the
+ * editor's active↔inactive geometry invariants (see notes inline).
+ */
+
+/*
+ * The GitHub repo page's README column: `container-xl` (1280px, 32px padding
+ * each side) minus the 296px file-tree sidebar minus the 2×16px layout
+ * gutter → 888px. The bundled theme still used the 800px convention.
+ */
+.md-editor.github-markdown-theme {
+    max-width: 888px;
+}
+
+/* ---------------------------------------------------------------- links */
+
+/* GitHub keeps the underline tucked below the descenders (`text-underline-offset: .2rem`). */
+.github-markdown-theme a {
+    text-underline-offset: 0.2rem;
+}
+
+/* ------------------------------------------------------- thematic break */
+
+/* GitHub changed `<hr>` from the old 0.25 em bar to a 1px hairline:
+   `hr { height: 1px; background-color: var(--borderColor-default); margin: 24px 0 }`. */
+.github-markdown-theme .md-thematic-break {
+    height: 1px;
+}
+
+/* --------------------------------------------------- fenced code blocks */
+
+/* GitHub pads `pre` 16px on every side (`padding: var(--base-size-16)`);
+   the bundled theme used 10px top/bottom. */
+.github-markdown-theme .md-code-block {
+    padding: 16px;
+}
+
+/* ------------------------------------------------------------ tables */
+
+/*
+ * GitHub headers use the same vertical padding as body cells: `padding: 6px 13px`
+ * (the bundled theme reserved 11px+11px). The editor's invariant is that a
+ * table keeps its exact height when the block becomes active: the inactive
+ * header's extra vertical padding is reclaimed to host the hidden delimiter
+ * row (`| --- |`). With 6px+6px inactive the active state needs header padding
+ * 0+0 plus a 12px delimiter row; total is 12px either way, so activation never
+ * shifts the document.
+ */
+.github-markdown-theme .md-table tr:first-child td {
+    font-weight: 600;
+    padding-top: 6px;
+    padding-bottom: 6px;
+}
+
+.github-markdown-theme .md-table.md-block-active tr:first-child td {
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+/* The delimiter row reserves the 12px reclaimed above; `---` still fits (11px mono). */
+.github-markdown-theme .md-table-delimiter-row td {
+    height: 12px;
+}
+
+/* Header ink is the same as GitHub's `.markdown-body table th`: inherited fg. */
+.github-markdown-theme .md-table tr:first-child td {
+    color: inherit;
+}
+
+/*
+ * Zebra rows: GitHub shades every second data row with `--bgColor-muted`
+ * (`table tr:nth-child(2n)` → #f6f8fa). The editor interleaves
+ * `<span class="md-glue">` elements between `<tr>` siblings, so the package
+ * theme's `tr:nth-child(even)` selector never matches a row (every `<tr>`
+ * lands on an odd child index). `:nth-of-type()` ignores the glue elements
+ * and counts rows only: the delimiter is always the 2nd row (excluded
+ * below), so data rows 2, 4, 6 … get the muted wash — GitHub's shading.
+ */
+.github-markdown-theme .md-table tr:nth-of-type(even):not(.md-table-delimiter-row) {
+    background-color: #f6f8fa;
+}
+
+/* -------------------------------------------------------------- images */
+
+/* `.markdown-body img { border-style: none; max-width: 100%; box-sizing: content-box }`. */
+.github-markdown-theme img {
+    border-style: none;
+    max-width: 100%;
+    box-sizing: content-box;
+    background-color: transparent;
+}
+
+/* ------------------------------------- inline code inside headings */
+
+/* GitHub: `h1 code, … h6 code { font-size: inherit; padding: 0 .2em }` — the
+   inline-code background stays on; only the size/padding are lifted. */
+.github-markdown-theme .md-heading :not(pre) > code {
+    font-size: inherit;
+    padding: 0 0.2em;
+}
+
+/* --------------------------------- heading hover: anchor (link) icon */
+
+/*
+ * GitHub reveals the octicon "link" glyph in the gutter while a heading is
+ * hovered (`.markdown-heading .anchor .octicon`). The editor's headings
+ * already carry a source `#` marker in that gutter while active; this is a
+ * pure overlay (position absolute, no geometry, shown on hover only).
+ */
+.github-markdown-theme .md-heading::before {
+    content: "";
+    position: absolute;
+    left: -20px;
+    top: calc((1lh - 16px) / 2);
+    width: 16px;
+    height: 16px;
+    background-color: #1f2328;
+    mask: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' version='1.1' aria-hidden='true'><path fill-rule='evenodd' d='M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z'></path></svg>") center / contain no-repeat;
+    -webkit-mask: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' version='1.1' aria-hidden='true'><path fill-rule='evenodd' d='M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z'></path></svg>") center / contain no-repeat;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.github-markdown-theme .md-heading:hover::before {
+    opacity: 1;
+}
+
+/* -------------------------------------------------- editor canvas chrome */
+
+/*
+ * Selection: GitHub paints text selection `--selection-bgColor: #0969da33`
+ * (accent at 20%); the engine default is a generic blue wash.
+ */
+.github-markdown-theme .md-selection-path {
+    fill: #0969da33;
+}
+
+/* Caret matches body ink (#1f2328), not the engine's black. */
+.github-markdown-theme .md-cursor {
+    background-color: #1f2328;
+}
+
+/*
+ * Task-list checkbox: GitHub leaves README checkboxes to the native UA
+ * rendering in a light color scheme (approximately 13px, 1px gray border,
+ * Primer accent when checked — `--control-checked-bgColor-rest: #0969da`,
+ * hover `#0860ca`, check ring `--fgColor-onEmphasis: #ffffff`).
+ * The engine widget is 16px/2px #4c8bf5 VS Code blue.
+ * The box is an absolute overlay on the hidden `[x]` source, so resizing it
+ * never shifts text.
+ */
+.github-markdown-theme .md-checkbox {
+    width: 13px;
+    height: 13px;
+    border: 1px solid #1f23284d;
+    border-radius: 2.5px;
+    background-color: #ffffff;
+    top: 0.34em; /* (24px line box − 13px box) / 2 */
+}
+
+.github-markdown-theme .md-checkbox:checked {
+    background-color: #0969da;
+    border-color: #0969da;
+}
+
+.github-markdown-theme .md-checkbox:checked::after {
+    /* Re-centered for the 13px box (rect center = box center: 4 + 5/2, 2 + 9/2). */
+    left: 4px;
+    top: 2px;
+    width: 5px;
+    height: 9px;
+    border-width: 0 2px 2px 0;
+}
+
+.github-markdown-theme .md-checkbox:hover:not(:checked) {
+    border-color: #1f232880;
+}
+
+.github-markdown-theme .md-checkbox:checked:hover {
+    background-color: #0860ca;
+    border-color: #0860ca;
+}
+
+/* Active-block wash: Primer's neutral canvas (`--bgColor-muted`), not the
+   engine's raw #f8f8f8, so it blends with table zebra rows and code blocks. */
+.github-markdown-theme .md-block-active {
+    background-color: #f6f8fa;
+    box-shadow: 0 0 0 8px #f6f8fa;
+}
