@@ -8,11 +8,14 @@ import { createStubPanel } from './support/stubPanel';
 const EXTENSION_URI = Uri.parse('file:///extension') as unknown as VscodeUri;
 const TOKEN = {} as CancellationToken;
 
-function resolveProvider(document: FakeTextDocument) {
+function resolveOn(provider: GithubStyleMarkdownEditorProvider, document: FakeTextDocument) {
     const stub = createStubPanel();
-    const provider = new GithubStyleMarkdownEditorProvider(EXTENSION_URI);
     provider.resolveCustomTextEditor(document as unknown as TextDocument, stub.panel, TOKEN);
     return stub;
+}
+
+function resolveProvider(document: FakeTextDocument) {
+    return resolveOn(new GithubStyleMarkdownEditorProvider(EXTENSION_URI), document);
 }
 
 /** Lets promise callbacks queued by the provider (applyEdit, postMessage) run. */
@@ -86,6 +89,39 @@ describe('edits from the webview', () => {
         expect(document.getText()).toBe('Title');
         expect(messages).toContainEqual({ type: 'content', content: 'Title' });
     });
+
+    it('redoes the edit after an undo', async () => {
+        const document = createDocument('file:///notes.md', 'Title');
+        const { messages, send } = resolveProvider(document);
+
+        send({ type: 'edit', start: 0, endExclusive: 0, text: '# ' });
+        await flush();
+        send({ type: 'undo' });
+        await flush();
+        send({ type: 'redo' });
+        await flush();
+
+        expect(document.getText()).toBe('# Title');
+        expect(messages).toContainEqual({ type: 'content', content: '# Title' });
+    });
+
+    it('coalesces rapid edits into a single undo step', async () => {
+        const document = createDocument('file:///notes.md', 'Title');
+        const { send } = resolveProvider(document);
+
+        send({ type: 'edit', start: 0, endExclusive: 0, text: '# ' });
+        await flush();
+        send({ type: 'edit', start: 7, endExclusive: 7, text: '!' });
+        await flush();
+
+        send({ type: 'undo' });
+        await flush();
+        expect(document.getText()).toBe('Title');
+
+        send({ type: 'redo' });
+        await flush();
+        expect(document.getText()).toBe('# Title!');
+    });
 });
 
 describe('external document changes', () => {
@@ -110,6 +146,28 @@ describe('external document changes', () => {
         other.setTextExternally('nope');
 
         expect(messages).toHaveLength(0);
+    });
+});
+
+describe('multiple editors', () => {
+    it('keeps a separate history per document', async () => {
+        const first = createDocument('file:///one.md', 'One');
+        const second = createDocument('file:///two.md', 'Two');
+        const provider = new GithubStyleMarkdownEditorProvider(EXTENSION_URI);
+        const firstStub = resolveOn(provider, first);
+        const secondStub = resolveOn(provider, second);
+
+        firstStub.send({ type: 'edit', start: 3, endExclusive: 3, text: '!' });
+        secondStub.send({ type: 'edit', start: 3, endExclusive: 3, text: '?' });
+        await flush();
+        expect(first.getText()).toBe('One!');
+        expect(second.getText()).toBe('Two?');
+
+        firstStub.send({ type: 'undo' });
+        secondStub.send({ type: 'undo' });
+        await flush();
+        expect(first.getText()).toBe('One');
+        expect(second.getText()).toBe('Two');
     });
 });
 

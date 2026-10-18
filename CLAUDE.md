@@ -36,7 +36,7 @@ Host ↔ webview protocol (defined in `src/webviewEditorProvider.ts` and the hea
 
 Edit flow: webview `autorun` over `model.sourceText` → `computeTextEdit` (common prefix/suffix diff, `webview/computeTextEdit.ts`) → `edit` message → host applies a `WorkspaceEdit`. `#isApplying` suppresses the host's `onDidChangeTextDocument` echo (and `#isUpdatingFromHost` does the same in the webview) to avoid feedback loops.
 
-Undo/redo is NOT the native document undo stack: the webview intercepts Ctrl/Cmd+Z and the provider keeps its own whole-document snapshot history (`#snapshots`, max 250, keystrokes coalesced within 750 ms). External changes reset the history. Note the history is stored on the provider instance, which is shared across all editors, not per document.
+Undo/redo is NOT the native document undo stack: the webview intercepts Ctrl/Cmd+Z and the provider keeps its own whole-document history per document (`src/documentHistory.ts`; max 250 states, edits coalesced within 750 ms). States are recorded after each applied edit so redo can replay them; external changes reset the history, and closing the last editor for a document drops it.
 
 Styling: package CSS (`@vscode/markdown-editor/editor.css`, `themes/github.css`, KaTeX) plus `webview/canvas.css`, which pins `--vscode-*` tokens to Primer light values.
 
