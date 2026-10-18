@@ -10,6 +10,36 @@
       ],
       "outFiles": [
         "${workspaceFolder}/dist/**/*.js"
+      ],
+      // Webview bundle lives in media/; map it so breakpoints in webview/*.ts bind.
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/dist/**/*.js",
+        "${workspaceFolder}/media/**/*.js"
+      ],
+      // Lets the debugger also attach to webviews opened by this extension.
+      "debugWebviews": true,
+      "debugWebWorkerHost": true
+    },
+    {
+      // Attach to a running VS Code with this extension loaded (start it with
+      // `code --inspect-extensions=9229`). Breakpoints in src/ and webview/
+      // bind for a workspace/dev-path instance via the workspace .map files;
+      // installed VSIX copies ship without maps, so breakpoints there land in
+      // the bundled JS (see README "Debugging" to ship maps for a debug VSIX).
+      "name": "Attach to Extension Host (installed VSIX)",
+      "type": "extensionHost",
+      "request": "attach",
+      "port": 9229,
+      "outFiles": [
+        "${workspaceFolder}/dist/**/*.js",
+        "${workspaceFolder}/media/**/*.js"
+      ],
+      // Extension host + webview scripts from an installed extension load via
+      // vscode-webview-resource and file URLs; accept both.
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/dist/**/*.js",
+        "${workspaceFolder}/media/**/*.js",
+        "!**/node_modules/**"
       ]
     }
   ]
