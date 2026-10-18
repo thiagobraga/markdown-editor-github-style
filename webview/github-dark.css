@@ -1,0 +1,198 @@
+/*
+ * GitHub "dark" (Primer dark default) for the editor, active while VS Code uses
+ * a dark theme (`<html data-gh-theme="dark">`, set by `theme.ts`).
+ *
+ * Imported after `github-light.css`; every rule here carries the extra
+ * `:root[data-gh-theme="dark"]` prefix so it out-ranks the light values it
+ * replaces. Primer dark tokens used:
+ *
+ *   --fgColor-default:            #f0f6fc
+ *   --fgColor-muted:              #9198a1
+ *   --fgColor-accent:             #4493f8
+ *   --borderColor-default:        #3d444d
+ *   --borderColor-muted:          #3d444db3
+ *   --bgColor-default:            #0d1117
+ *   --bgColor-muted:              #151b23
+ *   --bgColor-neutral-muted:      #656c7633
+ *   --selection-bgColor:          #4493f833
+ *   --control-checked-bgColor:    #1f6feb  (hover #388bfd)
+ */
+
+:root[data-gh-theme="dark"] {
+    color-scheme: dark;
+}
+
+:root[data-gh-theme="dark"] :is(html, body),
+:root[data-gh-theme="dark"] #editor {
+    background: #0d1117;
+    color: #f0f6fc;
+}
+
+:root[data-gh-theme="dark"] .md-editor.github-markdown-theme {
+    color-scheme: dark;
+    color: #f0f6fc;
+}
+
+/* ---------------------------------------------------------- typography */
+
+:root[data-gh-theme="dark"] .github-markdown-theme :is(h1, h2).md-heading {
+    border-bottom-color: #3d444db3;
+}
+
+:root[data-gh-theme="dark"] .github-markdown-theme .gh-html-render :is(h1, h2) {
+    border-bottom-color: #3d444db3;
+}
+
+:root[data-gh-theme="dark"] .github-markdown-theme .gh-html-render h6,
+:root[data-gh-theme="dark"] .github-markdown-theme .md-blockquote:not(.gh-alert) {
+    color: #9198a1;
+}
+
+:root[data-gh-theme="dark"] .github-markdown-theme .md-blockquote {
+    border-left-color: #3d444d;
+}
+
+:root[data-gh-theme="dark"] .github-markdown-theme :is(a, a:hover, .gh-html-render a) {
+    color: #4493f8;
+}
+
+:root[data-gh-theme="dark"] .github-markdown-theme :is(.md-thematic-break, .gh-html-render hr) {
+    background-color: #3d444d;
+}
+
+:root[data-gh-theme="dark"] .github-markdown-theme .md-heading::before {
+    background-color: #f0f6fc;
+}
+
+/* ---------------------------------------------------------------- code */
+
+:root[data-gh-theme="dark"] .github-markdown-theme :not(pre) > code,
+:root[data-gh-theme="dark"] .github-markdown-theme .gh-html-render code {
+    background-color: #656c7633;
+}
+
+:root[data-gh-theme="dark"] .github-markdown-theme .md-code-block {
+    background-color: #151b23;
+}
+
+:root[data-gh-theme="dark"] .github-markdown-theme .md-code-block code {
+    background-color: transparent;
+}
+
+:root[data-gh-theme="dark"] .github-markdown-theme .md-code-block .tok-keyword { color: #ff7b72; }
+:root[data-gh-theme="dark"] .github-markdown-theme .md-code-block :is(.tok-string, .tok-regexp) { color: #a5d6ff; }
+:root[data-gh-theme="dark"] .github-markdown-theme .md-code-block .tok-comment { color: #9198a1; }
+:root[data-gh-theme="dark"] .github-markdown-theme .md-code-block :is(.tok-number, .tok-attribute) { color: #79c0ff; }
+:root[data-gh-theme="dark"] .github-markdown-theme .md-code-block :is(.tok-type, .tok-annotation) { color: #ffa657; }
+:root[data-gh-theme="dark"] .github-markdown-theme .md-code-block .tok-tag { color: #7ee787; }
+:root[data-gh-theme="dark"] .github-markdown-theme .md-code-block .tok-delimiter { color: #e6edf3; }
+
+:root[data-gh-theme="dark"] .github-markdown-theme kbd {
+    color: #f0f6fc;
+    background-color: #151b23;
+    border-color: #3d444db3;
+    box-shadow: inset 0 -1px 0 #3d444db3;
+}
+
+/* -------------------------------------------------------------- tables */
+
+:root[data-gh-theme="dark"] .github-markdown-theme :is(.md-table th, .md-table td, .gh-html-render :is(td, th)) {
+    border-color: #3d444d;
+}
+
+:root[data-gh-theme="dark"] .github-markdown-theme .md-table-delimiter-row td {
+    border-color: transparent;
+}
+
+:root[data-gh-theme="dark"] .github-markdown-theme .md-table tr:nth-of-type(even):not(.md-table-delimiter-row) {
+    background-color: #151b23;
+}
+
+/* ------------------------------------------------------- editor chrome */
+
+:root[data-gh-theme="dark"] .github-markdown-theme .md-block-active {
+    background-color: #151b23;
+    box-shadow: 0 0 0 8px #151b23;
+}
+
+:root[data-gh-theme="dark"] .github-markdown-theme .md-empty-block.md-block-active {
+    background-color: transparent;
+    box-shadow: none;
+}
+
+:root[data-gh-theme="dark"] .github-markdown-theme .md-selection-path {
+    fill: #4493f833;
+}
+
+:root[data-gh-theme="dark"] .github-markdown-theme .md-cursor {
+    background-color: #f0f6fc;
+}
+
+:root[data-gh-theme="dark"] .github-markdown-theme .md-checkbox {
+    background-color: #0d1117;
+    border-color: #f0f6fc4d;
+}
+
+:root[data-gh-theme="dark"] .github-markdown-theme .md-checkbox:hover:not(:checked) {
+    border-color: #f0f6fc80;
+}
+
+:root[data-gh-theme="dark"] .github-markdown-theme .md-checkbox:checked {
+    background-color: #1f6feb;
+    border-color: #1f6feb;
+}
+
+:root[data-gh-theme="dark"] .github-markdown-theme .md-checkbox:checked:hover {
+    background-color: #388bfd;
+    border-color: #388bfd;
+}
+
+/* -------------------------------------------------- GitHub image schemes */
+
+/* `#gh-dark-mode-only` / `#gh-light-mode-only` image fragments, as on github.com. */
+:root[data-gh-theme="dark"] .github-markdown-theme img[src$="#gh-dark-mode-only"] {
+    display: inline;
+}
+
+:root[data-gh-theme="dark"] .github-markdown-theme img[src$="#gh-light-mode-only"] {
+    display: none;
+}
+
+/* ---------------------------------------------------------------- alerts */
+
+:root[data-gh-theme="dark"] .github-markdown-theme .md-blockquote.gh-alert-note { border-left-color: #4493f8; }
+:root[data-gh-theme="dark"] .github-markdown-theme .gh-alert-title-note { color: #4493f8; }
+:root[data-gh-theme="dark"] .github-markdown-theme .md-blockquote.gh-alert-tip { border-left-color: #3fb950; }
+:root[data-gh-theme="dark"] .github-markdown-theme .gh-alert-title-tip { color: #3fb950; }
+:root[data-gh-theme="dark"] .github-markdown-theme .md-blockquote.gh-alert-important { border-left-color: #ab7df8; }
+:root[data-gh-theme="dark"] .github-markdown-theme .gh-alert-title-important { color: #ab7df8; }
+:root[data-gh-theme="dark"] .github-markdown-theme .md-blockquote.gh-alert-warning { border-left-color: #d29922; }
+:root[data-gh-theme="dark"] .github-markdown-theme .gh-alert-title-warning { color: #d29922; }
+:root[data-gh-theme="dark"] .github-markdown-theme .md-blockquote.gh-alert-caution { border-left-color: #f85149; }
+:root[data-gh-theme="dark"] .github-markdown-theme .gh-alert-title-caution { color: #f85149; }
+
+/* ----------------------------------------------------------- scrollbars */
+
+:root[data-gh-theme="dark"] #editor,
+:root[data-gh-theme="dark"] #editor * {
+    scrollbar-color: #9198a14d transparent;
+}
+
+:root[data-gh-theme="dark"] #editor *:hover {
+    scrollbar-color: #9198a199 transparent;
+}
+
+/* ------------------------------------------- toggle pills (edit + theme) */
+
+:root[data-gh-theme="dark"] .github-markdown-theme {
+    --md-readonly-background: #151b23;
+    --md-readonly-background-hover: #262c36;
+    --md-readonly-border: #3d444d;
+    --md-readonly-border-hover: #59636e;
+    --md-readonly-foreground: #9198a1;
+    --md-readonly-accent: #1f6feb;
+}
+
+:root[data-gh-theme="dark"] .gh-theme-toggle {
+    box-shadow: none;
+}
