@@ -1,11 +1,15 @@
 name: Release
 
-# Publishing runs on version tags, e.g. `git tag v0.2.0 && git push origin v0.2.0`.
-# The tag must match the `version` field in package.json.
+# Runs on version tags, e.g. `git tag v0.1.1 && git push origin v0.1.1`; the tag
+# must match the `version` field in package.json. The GitHub release with the
+# .vsix is always created; publishing to the VS Code Marketplace and Open VSX
+# only happens when the VSCE_PAT / OVSX_PAT secrets are configured. Publish an
+# existing tag later with `gh workflow run release.yml --ref v0.1.1`.
 on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
 
 concurrency:
   group: release-${{ github.ref_name }}
@@ -19,6 +23,11 @@ jobs:
     name: Publish ${{ github.ref_name }}
     runs-on: ubuntu-latest
     # `main` is expected to be green in CI before tagging.
+    env:
+      # Job-level env makes the secrets available to the steps' `if:` checks;
+      # an unset secret is just an empty string and skips that publish step.
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      OVSX_PAT: ${{ secrets.OVSX_PAT }}
     steps:
       - uses: actions/checkout@v4
 
@@ -48,14 +57,17 @@ jobs:
       - name: Package VSIX
         run: npm run package -- -o "markdown-editor-github-style-${GITHUB_REF_NAME}.vsix"
 
+      - name: Note the skipped marketplace publishing
+        if: env.VSCE_PAT == '' || env.OVSX_PAT == ''
+        run: |
+          echo "::notice::VSCE_PAT and/or OVSX_PAT are not configured - skipping marketplace publishing. Re-run this workflow on the tag after adding the secrets to publish it."
+
       - name: Publish to the VS Code Marketplace
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        if: env.VSCE_PAT != ''
         run: npx vsce publish --packagePath "markdown-editor-github-style-${GITHUB_REF_NAME}.vsix"
 
       - name: Publish to Open VSX
-        env:
-          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        if: env.OVSX_PAT != ''
         run: npx ovsx publish "markdown-editor-github-style-${GITHUB_REF_NAME}.vsix"
 
       - name: Create the GitHub release with the VSIX

@@ -1,8 +1,8 @@
 {
   "name": "markdown-editor-github-style",
-  "displayName": "Markdown Preview Editor Github Style",
+  "displayName": "Markdown Editor Github Style",
   "description": "Realtime WYSIWYG markdown editing that looks like GitHub Pages — the new inline markdown editor experience rendered with GitHub's own light styling.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "your-publisher",
   "license": "MIT",
   "engines": {

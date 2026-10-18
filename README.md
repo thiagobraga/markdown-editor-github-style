@@ -1,8 +1,6 @@
-# Markdown Preview Editor Github Style
+# Markdown Editor Github Style
 
-Realtime WYSIWYG markdown editing that looks like GitHub Pages in light mode —
-the same inline editor experience VS Code's new built-in Markdown Editor gives
-you, rendered with GitHub's own markdown styling.
+Realtime WYSIWYG markdown editing that looks like GitHub Pages in light mode - the same inline editor experience VS Code's new built-in Markdown Editor gives you, rendered with GitHub's own markdown styling.
 
 ![](https://github.com/your-user/markdown-editor-github-style/raw/main/docs/screenshot.png)
 
@@ -33,7 +31,7 @@ realtime — regardless of whether VS Code itself uses a dark theme.
   both stay in sync
 - Scroll position persists per document
 - Undo/redo inside the editor
-- Works with `*.md`; open via *Reopen Editor With…* or a workspace mapping:
+- Works with `*.md`; open via _Reopen Editor With…_ or a workspace mapping:
 
 ```json
 {
@@ -50,7 +48,7 @@ realtime — regardless of whether VS Code itself uses a dark theme.
   text diffs and are applied through `WorkspaceEdit`; undo/redo use a compact
   snapshot history kept host-side.
 - **Webview** (`webview/main.ts`): mounts `EditorModel` + `EditorView({ classNames:
-  ['github-markdown-theme'] })` + `EditorController` from
+['github-markdown-theme'] })` + `EditorController` from
   `@vscode/markdown-editor`, mirroring VS Code's own bootstrap code (open
   source, MIT).
 - **Styling**: the package theme provides GitHub typography scoped under the
@@ -69,7 +67,7 @@ realtime — regardless of whether VS Code itself uses a dark theme.
   not re-wired yet)
 - No readonly ("locked") mode yet
 - No Mermaid rendering yet (diagrams render as source)
-- GitHub *dark* themes are not built into the package; a dark variant is on the
+- GitHub _dark_ themes are not built into the package; a dark variant is on the
   roadmap as a custom theme stylesheet
 
 ## Roadmap
@@ -104,18 +102,20 @@ Dev workflow (VS Code tasks, mirrors [.vscode/tasks.json](.vscode/tasks.json)):
   requests: lint, typecheck, unit tests, integration tests in a real VS Code,
   and an uploadable `.vsix` artifact. No secrets required.
 - **Release** ([`release.yml`](.github/workflows/release.yml)) — on `v*.*.*`
-  tags: verifies the tag matches `package.json`, runs lint + unit tests,
-  packages the `.vsix`, publishes to the [VS Code
+  tags (or manual runs on a tag): verifies the tag matches `package.json`,
+  runs lint + unit tests, packages the `.vsix`, and attaches it to a GitHub
+  release. Publishing to the [VS Code
   Marketplace](https://marketplace.visualstudio.com) and
-  [Open VSX](https://open-vsx.org), and attaches the `.vsix` to a GitHub
-  release.
+  [Open VSX](https://open-vsx.org) only happens once the `VSCE_PAT` /
+  `OVSX_PAT` secrets are configured — see [Releasing](#releasing).
 
 ### Releasing
 
 1. Bump `version` in `package.json`, update `CHANGELOG.md`, commit.
 2. `git tag v0.2.0 && git push origin v0.2.0` — the release workflow does the rest.
 
-Repository secrets (Settings → Secrets and variables → Actions):
+Repository secrets (Settings → Secrets and variables → Actions) — only needed
+for marketplace publishing:
 
 - `VSCE_PAT` — Azure DevOps personal access token with the **Marketplace →
   Manage** scope, created under the account that owns the publisher configured
@@ -123,8 +123,11 @@ Repository secrets (Settings → Secrets and variables → Actions):
 - `OVSX_PAT` — access token from [open-vsx.org](https://open-vsx.org) after
   claiming the publisher namespace.
 
-Before the first publish, replace the `publisher` placeholder in `package.json`
-with your real Marketplace publisher id.
+While the secrets are absent, tagged releases still build the `.vsix` and
+attach it to a GitHub release. After adding them, publish an existing tag with
+`gh workflow run release.yml --ref v0.1.1`. Before the first publish, replace
+the `publisher` placeholder in `package.json` with your real Marketplace
+publisher id.
 
 ## Built with
 

@@ -47,4 +47,4 @@ Styling: package CSS (`@vscode/markdown-editor/editor.css`, `themes/github.css`,
 
 ## Release
 
-Tag `vX.Y.Z` matching `package.json` version triggers `.github/workflows/release.yml` (publishes to Marketplace and Open VSX; needs `VSCE_PAT` and `OVSX_PAT`). `publisher` in `package.json` is still the placeholder `your-publisher`.
+Tag `vX.Y.Z` matching `package.json` version triggers `.github/workflows/release.yml`: it builds the `.vsix` and creates the GitHub release, and publishes to the Marketplace / Open VSX only when the `VSCE_PAT` / `OVSX_PAT` secrets exist (`gh workflow run release.yml --ref vX.Y.Z` publishes an existing tag later). `publisher` in `package.json` is still the placeholder `your-publisher`.
