@@ -45,6 +45,10 @@ Styling: package CSS (`@vscode/markdown-editor/editor.css`, `themes/github.css`,
 - Unit tests (`test/unit`) run in Node; `vitest.config.mts` aliases `vscode` to `test/unit/mocks/vscode.ts`, and `test/unit/support/stubPanel.ts` fakes a webview panel. Extend the mock when the provider uses new `vscode` APIs.
 - Integration tests (`test/integration`, mocha) are compiled to `out-test/` by `tsconfig.test.json` (CommonJS) before `vscode-test` runs them (`.vscode-test.mjs`).
 
+## Commits
+
+Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): summary`, imperative mood, lowercase summary — e.g. `fix: keep undo history per document`, `docs: document the webview protocol`, `chore(build): emit source maps`. Common types: `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`.
+
 ## Release
 
 Tag `vX.Y.Z` matching `package.json` version triggers `.github/workflows/release.yml`: it builds the `.vsix` and creates the GitHub release, and publishes to the Marketplace / Open VSX only when the `VSCE_PAT` / `OVSX_PAT` secrets exist (`gh workflow run release.yml --ref vX.Y.Z` publishes an existing tag later). `publisher` in `package.json` is still the placeholder `your-publisher`.
